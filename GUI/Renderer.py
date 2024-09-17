@@ -3,6 +3,8 @@ from tkinter import *
 import customtkinter as ct
 import os
 from Helpers import Out
+from .Assets import *
+from .EventHandler import handleEvent
 
 # Class encapsulating application elements
 # NOTE: Events handling emthods are located in EventHandler.py file
@@ -15,7 +17,6 @@ class App(ct.CTk):
         self.title("Ethereum Address Clustering")
         # Set window icon using relative path
         iconPath = os.path.join("GUI", "Assets", "Icons", "AppIcon.ico")
-        print(iconPath)
         self.iconbitmap(iconPath)
 
         # Setup application grid
@@ -35,31 +36,19 @@ class App(ct.CTk):
         self.grid_columnconfigure(1, weight=3)
 
         # Default value for corner radiuses
-        self.cornerRad = 6
+        self.cornerRad = 10
+        # Default colors
+        self.FITBlue = "#00ABE3"
+        self.FITRed  = "#FF0028"
+
+        # Set white theme
+        self.setTheme(themeScheme="light")
 
         # Create widgets
         self.constructWidgets()
 
-    # Called from constructor to create all necessary widgets
-    def constructWidgets(self):
-        ## Create search bar ##
-        search_bar = ct.CTkEntry(
-            self,
-            placeholder_text="Insert address...",
-            corner_radius=self.cornerRad,
-            width=600
-        )
-        # Place it in grid
-        search_bar.grid(
-            row=0,
-            column=0,
-            padx=10,
-            pady=10,
-            sticky="nw"
-        )
-
     # Setter for application theme
-    def setTheme(self, themeScheme="blue", colorScheme="system"):
+    def setTheme(self, themeScheme="system", colorScheme="blue"):
         if themeScheme not in ["light", "dark", "system"]:
             Out.error(f"Invalid theme scheme choice: {themeScheme}")
         elif colorScheme not in ["blue", "green", "dark-blue"]:
@@ -69,10 +58,57 @@ class App(ct.CTk):
             ct.set_appearance_mode(themeScheme)
             # Apply color theme choice
             ct.set_default_color_theme(colorScheme)
+
+    # Called from constructor to create all necessary widgets
+    def constructWidgets(self):
+        ## Create search bar ##
+        search_bar = ct.CTkEntry(
+            self,
+            placeholder_text="Insert address...",
+            placeholder_text_color="white",
+            text_color="white",
+            font=("Helvetica", 22, "bold"),
+            fg_color=self.FITBlue,
+            border_color=self.FITBlue,
+            corner_radius=self.cornerRad,
+            width=500,
+            height=40
+        )
+        search_bar.grid(
+            row=0,
+            column=0,
+            padx=20,
+            pady=40,
+            sticky="w"
+        )
+        frame = ct.CTkFrame(
+            search_bar,
+            corner_radius=self.cornerRad,
+            fg_color=self.FITBlue,
+            border_color=self.FITBlue
+        )
+        frame.grid(
+            row=0,
+            column=0,
+            padx=(0, 10),
+            sticky="e"
+        )
+        # Place search icon button into search bar
+        searchIconButton = ct.CTkButton(
+            frame,
+            image=loadIcon("Search.png"),
+            text="",
+            command=handleEvent("click", "search"),
+            fg_color=self.FITBlue,
+            border_color=self.FITBlue,
+            corner_radius=self.cornerRad,
+            width=30,
+            height=40
+        )
+        searchIconButton.pack()
 # End of App class
 
 # Main function triggering application rendering
 def render():
-
     app = App()
     app.mainloop()
