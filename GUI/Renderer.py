@@ -1,5 +1,5 @@
 # Imports
-import tkinter
+from tkinter import *
 import customtkinter as ct
 import os
 from Helpers import Out
@@ -14,7 +14,8 @@ class App(ct.CTk):
         # Set window title
         self.title("Ethereum Address Clustering")
         # Set window icon using relative path
-        iconPath = os.path.join("Assets/Icons", "AppIcon.ico")
+        iconPath = os.path.join("GUI", "Assets", "Icons", "AppIcon.ico")
+        print(iconPath)
         self.iconbitmap(iconPath)
 
         # Setup application grid
@@ -33,6 +34,30 @@ class App(ct.CTk):
         # Right column for clustering results, with columns ratio 1:3
         self.grid_columnconfigure(1, weight=3)
 
+        # Default value for corner radiuses
+        self.cornerRad = 6
+
+        # Create widgets
+        self.constructWidgets()
+
+    # Called from constructor to create all necessary widgets
+    def constructWidgets(self):
+        ## Create search bar ##
+        search_bar = ct.CTkEntry(
+            self,
+            placeholder_text="Insert address...",
+            corner_radius=self.cornerRad,
+            width=600
+        )
+        # Place it in grid
+        search_bar.grid(
+            row=0,
+            column=0,
+            padx=10,
+            pady=10,
+            sticky="nw"
+        )
+
     # Setter for application theme
     def setTheme(self, themeScheme="blue", colorScheme="system"):
         if themeScheme not in ["light", "dark", "system"]:
@@ -48,5 +73,6 @@ class App(ct.CTk):
 
 # Main function triggering application rendering
 def render():
+
     app = App()
     app.mainloop()
