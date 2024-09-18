@@ -58,9 +58,9 @@ class App(ct.CTk):
         # Content area row, expandable
         self.grid_rowconfigure(1, weight=1)
         # Left menu column
-        self.grid_columnconfigure(0, weight=1)
-        # Right column for clustering results, with columns ratio 1:5
-        self.grid_columnconfigure(1, weight=5)
+        self.grid_columnconfigure(0, weight=0)
+        # Right column for clustering results
+        self.grid_columnconfigure(1, weight=1)
 
     # Creates frame and placed it to application grid
     def createFrame(self, parent=None, color="", grid:dict=None):
@@ -199,13 +199,12 @@ class App(ct.CTk):
         main_frame = self.createFrame(self, self.FITBlue, {
             "row"    : 1,
             "column" : 1,
-            "columnspan":2,
-            "padx"   : 20,
+            "padx"   : (0, 20),
             "pady"   : (0, 10),
             "sticky" : "nsew"
         })
         main_frame.grid_rowconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(1, weight=3)
+        main_frame.grid_rowconfigure(1, weight=4)
         main_frame.grid_columnconfigure(0, weight=1)
         # Create frame for clustered addresses
         self.scroll_bar = ct.CTkScrollableFrame(master=main_frame, fg_color=self.FITBlue, border_color=self.FITBlue)
@@ -219,11 +218,11 @@ class App(ct.CTk):
         # Create canvas for addresses graph
         self.graph = Canvas(main_frame)
         self.graph.grid(
-            row=1,
-            column=0,
+            row    = 1,
+            column = 0,
             padx   = 10,
             pady   = 10,
-            sticky="nsew"
+            sticky ="nsew"
         )
 
     # Updates connection status element icon
