@@ -5,14 +5,10 @@ import customtkinter as ct
 from PIL import Image
 
 # Loads given icon and return resized CTkImage
-def loadIcon(iconName="", iconWidth=32, iconHeight=32):
+def loadIcon(iconName=""):
     # Load icon
     icon = Image.open(
         os.path.join("GUI", "Assets", "Icons", iconName)
     )
-    # Resize icon
-    icon = icon.resize(
-        (iconWidth, iconHeight)
-    )
     # Return icon
-    return ct.CTkImage(icon)
+    return ct.CTkImage(icon, size=(28, 28))
