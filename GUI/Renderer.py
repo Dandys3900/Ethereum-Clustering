@@ -2,9 +2,11 @@
 from tkinter import *
 import customtkinter as ct
 import os
-from Helpers import Out
 from .Assets import *
 from .EventHandler import handleEvent
+
+# TODO:
+    # Chovani buttonu - maximalizace canvasu, otevreni menu atd
 
 # Class encapsulating application elements
 # NOTE: Events handling emthods are located in EventHandler.py file
@@ -65,7 +67,11 @@ class App(ct.CTk):
         return frame
 
     # Creates element of given target class (button/label)
-    def createElement(self, target=None, parent=None, color="", size:tuple=(0, 28), image="", imageSize:tuple=(28, 28), text=""):
+    def createElement(self, target=None, parent=None, color="", size:tuple=(0, 0), image="", imageSize:tuple=(28, 28), text="", pack:dict={}, frameGrid:dict=None):
+        # Create frame if grid is specified
+        if frameGrid:
+            parent = self.createFrame(parent, color, frameGrid)
+        # Create element
         element = target(
             master   = parent,
             image    = loadIcon(image, imageSize),
@@ -75,10 +81,9 @@ class App(ct.CTk):
             height   = size[1]
         )
         # Pack it with parent widget
-        element.pack(expand=True, fill=BOTH)
+        element.pack(**pack)
         # Bind left mouse click if button
         if isinstance(target, ct.CTkButton):
-            print("button")
             element.bind("<Button-1>", handleEvent)
         # Return constructed element
         return element
@@ -125,15 +130,13 @@ class App(ct.CTk):
             "pady"       : (40, 20),
             "sticky"     : "w"
         })
-        # Create frame for search icon
-        icon_frame = self.createFrame(search_bar, self.FITBlue, {
+        # Create button and frame with search icon
+        self.createElement(ct.CTkButton, search_bar, self.FITBlue, (40, 40), "Search.png", frameGrid={
             "row"    : 0,
             "column" : 0,
             "padx"   : (0, 10),
             "sticky" : "e"
         })
-        # Create button within frame with search icon
-        self.createElement(ct.CTkButton, icon_frame, self.FITBlue, (40, 40), "Search.png")
 
     # Creates vertical menu
     def createMenu(self):
@@ -145,26 +148,23 @@ class App(ct.CTk):
             "pady"   : 0,
             "sticky" : "nw"
         })
-        # List all icons used in menu
-        icons = ["Settings.png", "Charts.png", "GitlabRepo.png", "Donate.png"]
-        # Create and add buttons to menu
-        for icon in icons:
-            button = self.createElement(ct.CTkButton, menu_frame, self.FITRed, (40, 40), icon)
-            # Set padding between each button in menu
-            button.pack(pady=10, padx=10)
+        # Create and add buttons to menu with icons
+        for icon in ["Settings.png", "Charts.png", "GitlabRepo.png", "Donate.png"]:
+            self.createElement(ct.CTkButton, menu_frame, self.FITRed, (40, 40), icon, pack={
+                "padx" : 10,
+                "pady" : 10
+            })
 
     # Creates info button
     def createInfoElement(self):
-        # Create frame
-        info_frame = self.createFrame(self, "transparent", {
+        # Create button and frame with info icon
+        self.createElement(ct.CTkButton, self, self._fg_color, (40, 40), "Info.png", frameGrid={
             "row"    : 1,
             "column" : 0,
             "padx"   : (30, 10),
             "pady"   : 10,
             "sticky" : "ws"
         })
-        # Create button within frame with info icon
-        self.createElement(ct.CTkButton, info_frame, self._fg_color, (40, 40), "Info.png")
 
     # Creates current connection status element
     def createConnectionElement(self):
@@ -206,12 +206,13 @@ class App(ct.CTk):
             master           = main_frame,
             fg_color         = self.FITBlue,
             border_color     = self.FITBlue,
-            label_anchor     ="w",
+            label_anchor     = "w",
             label_text       = "Controlled addresses",
             label_font       = ("Helvetica", 20, "bold"),
             label_text_color = "white",
-            label_fg_color   = "transparent"
+            label_fg_color   = "transparent",
         )
+        # Place it to grid
         self.scroll_bar.grid(
             row    = 0,
             column = 0,
@@ -219,6 +220,23 @@ class App(ct.CTk):
             pady   = 0,
             sticky = "nsew"
         )
+        # Create search bar to search through result addresses
+        self.createEntry(main_frame, "Find address", self.FITBlue, ("Helvetica", 20), "white", (200, 30), grid={
+            "row"    : 0,
+            "column" : 0,
+            "pady"   : 5,
+            "sticky" : "n"
+        })
+        # Create frame for results operations
+        results_opt_frame = self.createFrame(main_frame, "transparent", {
+            "row"    : 0,
+            "column" : 0,
+            "padx"   : 10,
+            "pady"   : 5,
+            "sticky" : "ne"
+        })
+        # Add export button with icon
+        self.createElement(ct.CTkButton, results_opt_frame, "transparent", (30, 30), "Export.png", (22, 22))
         # Create canvas for addresses graph
         self.graph = Canvas(main_frame)
         self.graph.grid(
@@ -228,11 +246,10 @@ class App(ct.CTk):
             pady   = 10,
             sticky ="nsew"
         )
-        maximaze_frame = self.createFrame(self.graph, "transparent", {
-            "sticky" : "ne"
-        })
         # Create maximiza graph button
-        self.createElement(ct.CTkButton, maximaze_frame, "transparent", (30, 30), "Maximize.png", (22, 22))
+        self.createElement(ct.CTkButton, self.graph, "transparent", (30, 30), "Maximize.png", (22, 22), frameGrid={
+            "sticky" : "nw"
+        })
 
     # Adds clustered address record to output list
     def addResultAddress(self, text=""):

@@ -1,0 +1,10 @@
+trezor:
+  url: "http://147.229.8.210:56300/"
+  # NOTE: No authentization needed
+
+erigon:
+  url: "http://147.229.8.210:56301/"
+
+  header:
+    user: "coinomon"
+    password: "Wgnq2XJunbx7Tm8Bhimwe8cPr1e2FFE"
