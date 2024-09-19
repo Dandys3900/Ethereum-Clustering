@@ -6,6 +6,9 @@ from PIL import Image
 
 # Loads given icon and return resized CTkImage
 def loadIcon(iconName="", size:tuple=None):
+    # No icon name given to load
+    if iconName == "":
+        return None
     # Load icon
     icon = Image.open(
         os.path.join("GUI", "Assets", "Icons", iconName)
