@@ -4,14 +4,14 @@ import os
 import customtkinter as ct
 from PIL import Image
 
-# Loads given icon and return resized CTkImage
-def loadIcon(iconName="", size:tuple=None):
-    # No icon name given to load
-    if iconName == "":
+# Loads given image and return resized CTkImage object
+def loadImage(imageName="", size:tuple=None):
+    # No image name given to load
+    if imageName == "":
         return None
-    # Load icon
-    icon = Image.open(
-        os.path.join("GUI", "Assets", "Icons", iconName)
+    # Load image
+    img = Image.open(
+        os.path.join("GUI", "Assets", "Images", imageName)
     )
-    # Return icon
-    return ct.CTkImage(icon, size=size)
+    # Return image
+    return ct.CTkImage(img, size=size)
