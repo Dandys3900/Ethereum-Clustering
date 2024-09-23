@@ -10,8 +10,6 @@ def loadImage(imageName="", size:tuple=None):
     if imageName == "":
         return None
     # Load image
-    img = Image.open(
-        os.path.join("GUI", "Assets", "Images", imageName)
-    )
+    img = Image.open(os.path.join("GUI", "Assets", "Images", imageName))
     # Return image
     return ct.CTkImage(img, size=size)

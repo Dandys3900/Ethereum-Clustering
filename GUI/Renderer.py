@@ -1,11 +1,7 @@
 # Imports
-import customtkinter as ct
 import os
-from tkinter import *
-from GUI import *
-
-# TODO:
-    # Chovani buttonu - maximalizace canvasu, otevreni menu atd
+from tkinter import Canvas
+from GUI import ct
 
 # Default colors
 FITBlue = "#00ABE3"
@@ -15,6 +11,7 @@ FITRed  = "#FF0028"
 # NOTE: Events handling emthods are located in EventHandler.py file
 class App(ct.CTk):
     def __init__(self):
+        from GUI import ElementCreator
         super().__init__()
         # Creator ElementCreator instance
         self.creator = ElementCreator(self)
@@ -23,7 +20,7 @@ class App(ct.CTk):
         # Set window title
         self.title("Ethereum Address Clustering")
         # Set window icon
-        self.iconbitmap(os.path.join("GUI", "Assets", "Icons", "AppIcon.ico"))
+        self.iconbitmap(os.path.join("GUI", "Assets", "Images", "AppIcon.ico"))
 
         # Set default white theme
         ct.set_appearance_mode("light")

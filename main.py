@@ -1,5 +1,5 @@
 # Imports
-from GUI import render
+from GUI.Renderer import render
 
 # Project main function
 if __name__ == "__main__":

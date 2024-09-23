@@ -1,2 +1,2 @@
 # Import all module properties
-from .AssetsManager import *
+from .Assets_Manager import loadImage

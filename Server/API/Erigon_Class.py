@@ -1,6 +1,6 @@
 # Imports
 import os
-from .BaseClass import *
+from .Base_Class import *
 
 # Class handling interaction with Erigon API
 class ErigonAPI(BaseAPI):

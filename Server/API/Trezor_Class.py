@@ -1,5 +1,5 @@
 # Imports
-from .BaseClass import *
+from .Base_Class import *
 
 # Class handling interaction with Trezor Blockbook API
 class TrezorAPI(BaseAPI):

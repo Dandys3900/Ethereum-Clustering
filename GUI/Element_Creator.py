@@ -1,10 +1,11 @@
 # Functions hadling creation of UI elements needed in App() class
 # Imports
-import customtkinter as ct
+import os
 from .Assets import loadImage
-from GUI import *
+from GUI import ct
 
 class ElementCreator():
+    from GUI.Renderer import App
     def __init__(self, app:App):
         # Default parent
         self.parent = app
@@ -26,9 +27,10 @@ class ElementCreator():
 
     # Creates element of given target class (button/label)
     def createElement(self, target=None, parent=None, color="", size:tuple=(0, 0), image="", imageSize:tuple=(28, 28), text="", pack:dict={}, frameGrid:dict=None):
+        from GUI.Event_Handler import EventHandler
         # Create frame if grid is specified
         if frameGrid:
-            parent = self.createFrame(parent or self.parent, color, frameGrid)
+            parent = self.createFrame(parent, color, frameGrid)
         # Create element
         element = target(
             master   = parent or self.parent,
@@ -64,14 +66,18 @@ class ElementCreator():
         # Place into grid
         if grid:
             entry.grid(**grid)
-            # Return constructed button
+        # Return constructed button
         return entry
 
     # Creates top-level window
     def createWindow(self, parent=None, title="", geometry="400x300"):
-        return ct.CTkToplevel(
-            master   = parent or self.parent,
-            title    = title,
-            geometry = geometry
+        window = ct.CTkToplevel(
+            master = parent or self.parent
         )
+        # Apply window options
+        window.title(title)
+        window.geometry(geometry)
+        window.iconbitmap(os.path.join("GUI", "Assets", "Images", "AppIcon.ico"))
+        # Return constructed window
+        return window
 # End of ElementCreator class

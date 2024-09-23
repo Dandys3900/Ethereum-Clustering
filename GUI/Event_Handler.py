@@ -1,11 +1,11 @@
 # Function for handling UI events
 # Imports
-import customtkinter as ct
 from Helpers import Out
-from GUI import *
+from GUI import ct
 
 # Class handling UI events from App class
 class EventHandler():
+    from GUI import ElementCreator
     @staticmethod
     # Main event handling function
     def handleEvent(event=None, elementName="", creator:ElementCreator=None):
@@ -23,7 +23,7 @@ class EventHandler():
                 pass
             case "Info":
                 # Create info window with project details
-                info_window = creator.createWindow(ttle="Project Information")
+                info_window = creator.createWindow(title="Project Information")
                 # Construct project text
                 text = (
                     "Project Name: Ethereum Clustering Tool \n"
@@ -32,13 +32,7 @@ class EventHandler():
                     "Description: This tool is a result of Bachelor final thesis of 2024 conducted at Brno University of Technology. \n"
                 )
                 # Create label with project text and logo
-                creator.createElement(ct.CTkLabel, info_window, "transparent", (300, 280), "Logo.png", (300, 280), text, frameGrid={
-                    "row"    : 0,
-                    "column" : 0,
-                    "padx"   : 10,
-                    "pady"   : 10,
-                    "sticky" : "nsew"
-                })
+                creator.createElement(ct.CTkLabel, info_window, "transparent", (300, 280), "Logo.png", (200, 100), text)
 
             case "Export":
                 pass
