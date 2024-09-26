@@ -7,13 +7,16 @@ from GUI import ct
 class ElementCreator():
     from GUI.Renderer import App
     def __init__(self, app:App):
+        from GUI.Event_Handler import EventHandler
         # Default parent
         self.parent = app
         # Default value for corner radiuses
         self.cornerRadius = 10
+        # Init EventHandler class
+        self.handle = EventHandler(self)
 
     # Creates frame and placed it to application grid
-    def createFrame(self, parent=None, color="", grid:dict=None):
+    def createFrame(self, parent=None, color="transparent", grid:dict=None):
         frame = ct.CTkFrame(
             master        = parent or self.parent,
             fg_color      = color,
@@ -25,14 +28,13 @@ class ElementCreator():
         # Return constructed frame
         return frame
 
-    # Creates element of given target class (button/label)
-    def createElement(self, target=None, parent=None, color="", size:tuple=(0, 0), image="", imageSize:tuple=(28, 28), text="", pack:dict={}, frameGrid:dict=None):
-        from GUI.Event_Handler import EventHandler
+    # Create button with given attributes
+    def createButton(self, parent=None, color="transparent", size:tuple=(0, 0), image="", imageSize:tuple=(28, 28), text="", frameGrid:dict=None):
         # Create frame if grid is specified
         if frameGrid:
             parent = self.createFrame(parent, color, frameGrid)
         # Create element
-        element = target(
+        element = ct.CTkButton(
             master   = parent or self.parent,
             image    = loadImage(image, imageSize),
             text     = text,
@@ -40,12 +42,30 @@ class ElementCreator():
             width    = size[0],
             height   = size[1]
         )
-        # Pack it with parent widget
-        element.pack(**pack)
+        # Place it with parent widget
+        element.grid()
         # Bind left mouse click if button
-        if isinstance(element, ct.CTkButton):
-            # As element identifier use used icon name (without trailing file type)
-            element.bind("<Button-1>", lambda event: EventHandler.handleEvent(event, image.split(".")[0], self))
+        # As element identifier use used icon name (without trailing file type)
+        element.bind("<Button-1>", lambda _: self.handle.handleEvent(image.split(".")[0]))
+        # Return constructed element
+        return element
+
+    # Create label with given attributes
+    def createLabel(self, parent=None, color="transparent", size:tuple=(0, 0), image="", imageSize:tuple=(28, 28), text="", grid:dict={}):
+        # Create element
+        element = ct.CTkLabel(
+            master        = parent or self.parent,
+            image         = loadImage(image, imageSize),
+            text          = text,
+            fg_color      = color,
+            wraplength    = size[0],
+            justify       = "left",
+            corner_radius = self.cornerRadius,
+            width         = size[0],
+            height        = size[1],
+        )
+        # Place it with parent widget
+        element.grid(**grid)
         # Return constructed element
         return element
 
@@ -70,14 +90,16 @@ class ElementCreator():
         return entry
 
     # Creates top-level window
-    def createWindow(self, parent=None, title="", geometry="400x300"):
+    def createWindow(self, parent=None, title="", geometry="350x220"):
         window = ct.CTkToplevel(
             master = parent or self.parent
         )
         # Apply window options
         window.title(title)
         window.geometry(geometry)
-        window.iconbitmap(os.path.join("GUI", "Assets", "Images", "AppIcon.ico"))
+        window.resizable(False, False)
+        # Make sure window is at top level
+        window.attributes('-topmost', True)
         # Return constructed window
         return window
 # End of ElementCreator class

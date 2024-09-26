@@ -20,7 +20,7 @@ class App(ct.CTk):
         # Set window title
         self.title("Ethereum Address Clustering")
         # Set window icon
-        self.iconbitmap(os.path.join("GUI", "Assets", "Images", "AppIcon.ico"))
+        self.iconbitmap(os.path.join("GUI", "Assets", "Images", "AppIcon.png"))
 
         # Set default white theme
         ct.set_appearance_mode("light")
@@ -71,7 +71,7 @@ class App(ct.CTk):
             "sticky"     : "w"
         })
         # Create button and frame with search icon
-        self.creator.createElement(ct.CTkButton, search_bar, FITBlue, (40, 40), "Search.png", frameGrid={
+        self.creator.createButton(search_bar, FITBlue, (40, 40), "Search.png", frameGrid={
             "row"    : 0,
             "column" : 0,
             "padx"   : (0, 10),
@@ -81,7 +81,7 @@ class App(ct.CTk):
     # Creates vertical menu
     def createMenu(self):
         # Create frame
-        menu_frame = self.creator.createFrame(self, FITRed, {
+        self.menu_frame = self.creator.createFrame(self, FITRed, {
             "row"    : 1,
             "column" : 0,
             "padx"   : 20,
@@ -89,8 +89,8 @@ class App(ct.CTk):
             "sticky" : "nw"
         })
         # Create and add buttons to menu with icons
-        for icon in ["Settings.png", "Charts.png", "GitlabRepo.png", "Donate.png"]:
-            self.creator.createElement(ct.CTkButton, menu_frame, FITRed, (40, 40), icon, pack={
+        for icon in ["GitlabRepo.png", "Donate.png"]:
+            self.creator.createButton(self.menu_frame, FITRed, (40, 40), icon, frameGrid={
                 "padx" : 10,
                 "pady" : 10
             })
@@ -98,7 +98,7 @@ class App(ct.CTk):
     # Creates info button
     def createInfoButton(self):
         # Create button and frame with info icon
-        self.creator.createElement(ct.CTkButton, self, self._fg_color, (40, 40), "Info.png", frameGrid={
+        self.creator.createButton(self, self._fg_color, (40, 40), "Info.png", frameGrid={
             "row"    : 1,
             "column" : 0,
             "padx"   : (30, 10),
@@ -109,7 +109,7 @@ class App(ct.CTk):
     # Creates current connection status element
     def createConnectionButton(self):
         # Create frame
-        frame = self.creator.createFrame(self, "transparent", {
+        frame = self.creator.createFrame(self, grid={
             "row"    : 0,
             "column" : 1,
             "padx"   : 15,
@@ -118,9 +118,9 @@ class App(ct.CTk):
         })
         # Create label within frame with connection status icon
         # Store this element for potencial connection updates
-        self.connectionElement = self.creator.createElement(ct.CTkLabel, frame, self._fg_color, (40, 40), "Connection_ON.png", (34, 30))
+        self.connectionElement = self.creator.createLabel(frame, self._fg_color, (40, 40), "Connection_ON.png", (34, 30))
         # Create label within frame with refresh icon
-        self.creator.createElement(ct.CTkButton, frame, self._fg_color, (30, 30), "RefreshConStatus.png", (22, 22))
+        self.creator.createButton(frame, self._fg_color, (30, 30), "RefreshConStatus.png", (22, 22))
 
     # Creates element for displaying clustering results:
         # Clustered addresses list
@@ -168,7 +168,7 @@ class App(ct.CTk):
             "sticky" : "n"
         })
         # Create frame for results operations
-        results_opt_frame = self.creator.createFrame(main_frame, "transparent", {
+        results_opt_frame = self.creator.createFrame(main_frame, grid={
             "row"    : 0,
             "column" : 0,
             "padx"   : 10,
@@ -176,7 +176,7 @@ class App(ct.CTk):
             "sticky" : "ne"
         })
         # Add export button with icon
-        self.creator.createElement(ct.CTkButton, results_opt_frame, "transparent", (30, 30), "Export.png", (22, 22))
+        self.creator.createButton(results_opt_frame, size=(30, 30), image="Export.png", imageSize=(22, 22))
         # Create canvas for addresses graph
         self.graph = Canvas(main_frame)
         self.graph.grid(
@@ -186,14 +186,14 @@ class App(ct.CTk):
             pady   = 10,
             sticky ="nsew"
         )
-        # Create maximiza graph button
-        self.creator.createElement(ct.CTkButton, self.graph, "transparent", (30, 30), "Maximize.png", (22, 22), frameGrid={
+        # Create maximize graph button
+        self.creator.createButton(self.graph, size=(30, 30), image="Maximize.png", imageSize=(22, 22), frameGrid={
             "sticky" : "nw"
         })
 
     # Adds clustered address record to output list
     def addResultAddress(self, text=""):
-        self.creator.createElement(ct.CTkLabel, self.scroll_bar, "transparent", image="Entity.png", text=text)
+        self.creator.createLabel(self.scroll_bar, image="Entity.png", text=text)
 
     # Updates connection status element icon
     def connectionStatusChanged(self, status="ON"):
