@@ -53,15 +53,10 @@ class EventHandler():
                     "Description: This tool is a result of Bachelor final thesis of 2024 conducted at Brno University of Technology. \n"
                 )
                 # Create label with project text
-                self.creator.createLabel(info_window, size=(350, 100), text=text, grid={
+                self.creator.createLabel(info_window, size=(350, 200), text=text, grid={
                     "padx"   : 10,
                     "pady"   : 10,
                     "sticky" : "w"
-                })
-                # Create label with project logo
-                self.creator.createLabel(info_window, size=(350, 120), image="Logo.png", imageSize=(170, 90), grid={
-                    "pady"   : (0, 10),
-                    "sticky" : "sw"
                 })
             case "Export":
                 pass
