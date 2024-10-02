@@ -6,13 +6,13 @@ from .API import *
 class ServerHandler():
     def __init__(self):
         # Create API instances
-        #try:
-        self.erigon = ErigonAPI()
-        self.trezor = TrezorAPI()
-        #except Exception as e:
-        #    Out.error(e)
-        #    # Exit when API error
-        #    exit(-1)
+        try:
+            self.erigon = ErigonAPI()
+            self.trezor = TrezorAPI()
+        except Exception as e:
+            Out.error(e)
+            # Exit when API error
+            exit(-1)
 
     # Gets transaction from server and adds it to UI
     def getTransaction(self, txid=""):
