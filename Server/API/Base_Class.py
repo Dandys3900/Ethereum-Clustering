@@ -1,6 +1,7 @@
 # Imports
 import requests, urllib3, yaml
 from Helpers import Out
+from pathlib import Path
 
 # Suppress InsecureRequestWarning related to session.verify set to False
 from urllib3.exceptions import InsecureRequestWarning
@@ -9,18 +10,11 @@ urllib3.disable_warnings(InsecureRequestWarning)
 # Base class for API interaction
 class BaseAPI():
     def __init__(self, url="", header={}):
+        # Declare connection variables
         self.url     = url
         self.headers = header
         self.session = requests.Session()
-        # NOTE: Disabled for dev purposes!
         self.session.verify = False
-        # Check connection
-        self.checkConnection()
-
-    # Base function for connection checking
-    # NOTE: Raises exception if not overriden in child classes
-    def checkConnection(self):
-        raise NotImplementedError("Missing method body")
 
     # Handle GET request to given API endpoint
     def get(self, endpoint="", params=None):
@@ -61,4 +55,13 @@ class BaseAPI():
             # Output exception
             Out.error(e)
             return None
+
+    # Try to open and load config
+    def openConfigFile(self, fileName=""):
+        # Get path to parent dir of this file (Server/)
+        script_dir = Path(__file__).parent
+        # Construct absolute path to customer config file
+        file_path = script_dir / fileName
+        # Load config file
+        return open(file_path, "r")
 # BaseAPI class end

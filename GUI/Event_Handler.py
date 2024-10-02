@@ -2,6 +2,8 @@
 # Imports
 from Helpers import Out
 from GUI import tk
+from Server import HeuristicsClass
+import csv
 
 # Class handling UI events from App class
 class EventHandler():
@@ -9,6 +11,9 @@ class EventHandler():
     def __init__(self, creator:ElementCreator=None):
         # Store ElementCreator instance
         self.creator = creator
+        # Create instance of Heuristics
+        self.heuristics = HeuristicsClass(self.creator.parent)
+
         # Remember current donate label status
         self.donateLabelShown = False
         # Create donate label
@@ -28,7 +33,8 @@ class EventHandler():
     def handleEvent(self, elementName=""):
         match elementName:
             case "Search":
-                pass
+                # Do clustering and show results in UI
+                self.heuristics.clusterAddrs()
             case "GitlabRepo":
                 import webbrowser
                 # Open web browser with repo
@@ -43,8 +49,6 @@ class EventHandler():
                     self.donateLabel.grid()
                     self.donateLabelShown = True
             case "Info":
-                # Create info window with project details
-                info_window = self.creator.createWindow(title="Project Information")
                 # Construct project text
                 text = (
                     "Project Name: Ethereum Clustering Tool \n"
@@ -52,14 +56,19 @@ class EventHandler():
                     "Version: 1.0.0 \n"
                     "Description: This tool is a result of Bachelor final thesis of 2024 conducted at Brno University of Technology. \n"
                 )
-                # Create label with project text
-                self.creator.createLabel(info_window, size=(350, 200), text=text, grid={
-                    "padx"   : 10,
-                    "pady"   : 10,
-                    "sticky" : "w"
-                })
+                # Create info window with project details
+                self.creator.createWindow(title="Project Information", content=text)
             case "Export":
-                pass
+                with open("addresses.csv", mode="w", newline="") as file:
+                    writer = csv.writer(file)
+                    writer.writerow(["Clustered addresses"])
+                    # Get scroll bar from Renderer
+                    parent = self.creator.parent.scroll_bar
+                    # Iterate over clustered addresses and add them to CVS file
+                    for _, widget in parent.children.items():
+                        writer.writerow([widget.cget("text")])
+                    # Notify user when finished
+                    self.creator.createWindow(title="Export finished", geometry=(250, 100), content="Data exported to 'addresses.csv'", timer=2000)
             case "Maximize":
                 if self.graphMaxed:
                     # Collapse graph back
@@ -69,8 +78,6 @@ class EventHandler():
                     # Expand graph
                     self.creator.parent.scroll_bar.grid_remove()
                     self.graphMaxed = True
-            case "RefreshConStatus":
-                pass
             case "Copy":
                 # Create tkinter instance
                 tkinter = tk.Tk()

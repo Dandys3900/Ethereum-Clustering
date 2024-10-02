@@ -1,12 +1,11 @@
 # Functions hadling creation of UI elements needed in App() class
 # Imports
-import os
 from .Assets import loadImage
 from GUI import ct
 
 class ElementCreator():
     from GUI.Renderer import App
-    def __init__(self, app:App):
+    def __init__(self, app:App=None):
         from GUI.Event_Handler import EventHandler
         # Default parent
         self.parent = app
@@ -57,6 +56,7 @@ class ElementCreator():
             master        = parent or self.parent,
             image         = loadImage(image, imageSize),
             text          = text,
+            text_color    = "#D6AD60", # COLOR_GOLD
             fg_color      = color,
             wraplength    = size[0],
             justify       = "left",
@@ -90,16 +90,25 @@ class ElementCreator():
         return entry
 
     # Creates top-level window
-    def createWindow(self, parent=None, title="", geometry="350x220"):
+    def createWindow(self, parent=None, title="", geometry:tuple=(350, 220), content="", timer=None):
         window = ct.CTkToplevel(
             master = parent or self.parent
         )
         # Apply window options
         window.title(title)
-        window.geometry(geometry)
+        window.geometry(f"{geometry[0]}x{geometry[1]}")
         window.resizable(False, False)
         # Make sure window is at top level
         window.attributes('-topmost', True)
+        # Add content to window
+        self.createLabel(window, size=geometry, text=content, grid={
+            "padx"   : 10,
+            "pady"   : 10,
+            "sticky" : "n"
+        })
+        # Add timer to close window if set
+        if timer:
+            window.after(timer, window.destroy)
         # Return constructed window
         return window
 # End of ElementCreator class

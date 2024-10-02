@@ -1,5 +1,7 @@
 # .gitignore
+addresses.csv
 GUI/__pycache__/
 GUI/Assets/__pycache__/
 Helpers/__pycache__/
 Server/__pycache__/
+Server/API/__pycache__/

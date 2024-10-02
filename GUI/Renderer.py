@@ -30,8 +30,6 @@ class App(ct.CTk):
         self.configureGrid()
         # Create widgets
         self.constructWidgets()
-        # Create result area
-        self.createResultsArea()
 
     # Setup application grid
     # ----------- Window -----------
@@ -60,11 +58,13 @@ class App(ct.CTk):
         self.createMenu()
         # Create info button
         self.createInfoButton()
+        # Create result area
+        self.createResultsArea()
 
     # Creates elements forming search bar
     def createSearchBar(self):
         # Create entry
-        search_bar = self.creator.createEntry(self, "Insert target address", "white", ("Helvetica", 20, "bold"), COLOR_GOLD, (500, 50), {
+        self.search_bar = self.creator.createEntry(self, "Insert target address", "white", ("Helvetica", 20, "bold"), COLOR_GOLD, (500, 50), {
             "row"        : 0,
             "column"     : 0,
             "columnspan" : 2,
@@ -73,7 +73,7 @@ class App(ct.CTk):
             "sticky"     : "w"
         })
         # Create button and frame with search icon
-        self.creator.createButton(search_bar, COLOR_GOLD, (40, 40), "Search.png", frameGrid={
+        self.creator.createButton(self.search_bar, COLOR_GOLD, (40, 40), "Search.png", frameGrid={
             "row"    : 0,
             "column" : 0,
             "padx"   : (0, 10),
