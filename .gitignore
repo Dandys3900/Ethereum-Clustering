@@ -1,5 +1,6 @@
 # .gitignore
 addresses.csv
+virtenv/
 GUI/__pycache__/
 GUI/Assets/__pycache__/
 Helpers/__pycache__/
