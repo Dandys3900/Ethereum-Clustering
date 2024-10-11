@@ -1,5 +1,5 @@
 trezor:
-  url: "http://147.229.8.210:56300/api/v2/"
+  url: "http://147.229.8.210:56300/api/"
   # NOTE: No authentization needed
 
 erigon:
