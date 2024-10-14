@@ -3,18 +3,28 @@
 from Helpers import Out, startThreading
 from .API import *
 
-# From given transactions, extract destination addresses
+# From given transactions, extract addresses
+# NOTE: Always store opposite address to find one in transaction
 def gettxAddrs(apiResponse, addr, dest):
     for tx in apiResponse:
-        vin = tx.get("vin")
-        if vin and vin[0].get("addresses")[0] == addr:
-            # Store destination address
-            dest.append(tx.get("vout")[0].get("addresses")[0])
+        txFROMAddr = tx.get("vin")[0].get("addresses")[0]
+        txTOAddr   = tx.get("vout")[0].get("addresses")[0]
+        # Transaction contain target address
+        if addr in [txFROMAddr, txTOAddr]:
+            dest.append(
+                txTOAddr if addr == txFROMAddr else txFROMAddr
+            )
         # Or where it sends tokens via smart contract (if any)
-        tokenTrf = tx.get("tokenTransfers")
-        if tokenTrf and tokenTrf[0].get("from") == addr:
-            # Store destination address
-            dest.append(tokenTrf[0].get("to"))
+        tokenTrf = tx.get("tokenTransfers")[0] if tokenTrf else None
+        if tokenTrf:
+            # Store both from and to addresses
+            fromAddr = tokenTrf.get("from")
+            toAddr   = tokenTrf.get("to")
+            # Token transaction contain target address
+            if addr in [fromAddr, toAddr]:
+                dest.append(
+                    toAddr if addr == fromAddr else fromAddr
+                )
 
 class ServerHandler():
     def __init__(self):
