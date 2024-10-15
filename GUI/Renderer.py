@@ -188,8 +188,9 @@ class App(ct.CTk):
         })
 
     # Adds clustered address record to output list
-    def addResultAddress(self, text=""):
-        self.creator.createLabel(self.scroll_bar, image="Entity.png", text=text)
+    def addResultAddress(self, entities=[]):
+        for entity in entities:
+            self.creator.createLabel(self.scroll_bar, image="Entity.png", text=entity)
 # End of App class
 
 # Main function triggering application rendering

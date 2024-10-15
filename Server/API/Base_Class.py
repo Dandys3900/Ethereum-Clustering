@@ -1,5 +1,5 @@
 # Imports
-import requests, urllib3, yaml
+import requests, urllib3, yaml, aiohttp
 from Helpers import Out
 from pathlib import Path
 
@@ -13,44 +13,21 @@ class BaseAPI():
         # Declare connection variables
         self.url     = url
         self.headers = header
-        self.session = requests.Session()
+        self.session = aiohttp.ClientSession()
         self.session.verify = False
 
     # Handle GET request to given API endpoint
-    def get(self, endpoint="", params=None):
+    async def get(self, endpoint="", params=None):
         # Construct target URL
         url = self.url + endpoint
         try:
-            response = self.session.get(
-                url,
-                headers=self.headers,
-                params=params
-            )
-            # Check response status
-            response.raise_for_status()
-            # Return the response if any
-            return response.json() if (response.content and response.json()) else None
-        except Exception as e:
-            # Output exception
-            Out.error(e)
-            return None
-
-    # Handle POST request to given API endpoint
-    def post(self, endpoint="", json=None, data=None, auth=None):
-        # Construct target URL
-        url = self.url + endpoint
-        try:
-            response = self.session.post(
-                url,
-                headers=self.headers,
-                json=json,
-                data=data,
-                auth=auth
-            )
-            # Check response status
-            response.raise_for_status()
-            # Return the response if any
-            return response.json() if (response.content and response.json()) else None
+            async with self.session.get(url, headers=self.headers, params=params) as response:
+                # Check response status
+                response.raise_for_status()
+                # Return response content
+                if response.content_type == 'application/json':
+                    return await response.json()
+                return None
         except Exception as e:
             # Output exception
             Out.error(e)

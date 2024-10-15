@@ -1,35 +1,13 @@
 # Requests data for UI from server and handles response
 # Imports
-from Helpers import Out, startThreading
+import asyncio
+from functools import partial
+from Helpers import Out
 from .API import *
-
-# From given transactions, extract addresses
-# NOTE: Always store opposite address to find one in transaction
-def gettxAddrs(apiResponse, addr, dest):
-    for tx in apiResponse:
-        txFROMAddr = tx.get("vin")[0].get("addresses")[0]
-        txTOAddr   = tx.get("vout")[0].get("addresses")[0]
-        # Transaction contain target address
-        if addr in [txFROMAddr, txTOAddr]:
-            dest.append(
-                txTOAddr if addr == txFROMAddr else txFROMAddr
-            )
-        # Or where it sends tokens via smart contract (if any)
-        tokenTrf = tx.get("tokenTransfers")[0] if tokenTrf else None
-        if tokenTrf:
-            # Store both from and to addresses
-            fromAddr = tokenTrf.get("from")
-            toAddr   = tokenTrf.get("to")
-            # Token transaction contain target address
-            if addr in [fromAddr, toAddr]:
-                dest.append(
-                    toAddr if addr == fromAddr else fromAddr
-                )
 
 class ServerHandler():
     def __init__(self):
-        # Create API instances
-        try:
+        try: # Create API instances
             self.erigon = ErigonAPI()
             self.trezor = TrezorAPI()
         except Exception as e:
@@ -37,33 +15,40 @@ class ServerHandler():
             # Exit on API error
             exit(-1)
 
-    # Returns current highest available block
-    def getBlockNums(self):
-        retVal = self.trezor.get("status")
-        if retVal:
-            return retVal.get("blockbook", {}).get("bestHeight")
-        # Invalid value
-        return None
+    # Submits tasks to the executor making them asynchronous
+    async def runParalel(self, funcsList):
+        await asyncio.gather(*funcsList)
 
-    # Collects all transactions made by given addresses
-    def getAccountTxs(self, addr, results:list):
-        getTx = lambda results, addr, interval: results.extend(
-            gettxAddrs(
-                self.trezor.get(f"v2/address/{addr}", params={
-                    "from"    : interval[0],
-                    "to"      : interval[1],
-                    "details" : "txslight"
-                }),
-                addr,
-                results
-            )
-        )
-        step = 1000
-        # Generate functions list
-        funcList = [
-            getTx(results, addr, (start, start + (step - 1)))
-                for start in range(0, self.getBlockNums(), step)
-        ]
-        # Divide each segment into thread
-        startThreading(funcList)
+    # From given transactions, extract addresses
+    # NOTE: Store opposite address to find one in transaction
+    def getTxAddrs(self, addr, results, page=1):
+        apiResponse = (self.trezor.get(f"v2/address/{addr}", params={
+            "page"    : page,
+            "details" : "txslight"
+        })).get("transactions")
+        # Iterate over received transaction records
+        for tx in apiResponse:
+            txFROMAddr = tx.get("vin")[0].get("addresses")[0]
+            txTOAddr   = tx.get("vout")[0].get("addresses")[0]
+            # Transaction contain target address
+            if addr in [txFROMAddr, txTOAddr]:
+                results.append(
+                    txTOAddr if addr == txFROMAddr else txFROMAddr
+                )
+
+    # Collects all addresses targetAddr has any transactions with
+    async def getLinkedAddrs(self, targetAddr, results:list):
+        retVal = self.trezor.get(f"v2/address/{targetAddr}", params={
+            "details"  : "txslight"
+        })
+        # Get total number of pages of transaction for target address
+        totalPages = retVal.get("totalPages")
+        # Process returned transactions (implicitily from first page)
+        self.getTxAddrs(targetAddr, results)
+        # Decide whether multi-thread
+        if totalPages > 1:
+            # Execute address collecting
+            await self.runParalel([
+                partial(self.getTxAddrs, targetAddr, results, page) for page in totalPages
+            ])
 # End of ServerHandler class
