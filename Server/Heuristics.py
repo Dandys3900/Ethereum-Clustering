@@ -11,6 +11,27 @@ class HeuristicsClass():
         self.ui = ui
         # Init ServerData_Handler for communicating with blockchain client
         self.api = ServerHandler()
+        # Load list of all known exchange addresses
+        with open("exchanges.json", "r", encoding="utf-8") as file:
+            self.exchAddrs = json.load(file)
+        # Load all addresses linked with known exchanges
+        with open("exchanges_conns.json", "r", encoding="utf-8") as file:
+            self.exchConns = json.load(file)
+
+    # Performs update of addresses connected to known exchanges
+    async def updateExchangeConns(self):
+        self.exchConns.clear()
+        # Create session for async requests
+        async with ClientSession() as session:
+            # Execute address collecting
+            await self.api.runParalel([
+                partial(self.api.getLinkedAddrs, session, dexAddr, self.exchConns) for dexAddr in self.exchAddrs
+            ])
+            # Exclude known exchange addresses
+            self.exchConns = filter(lambda x: x not in self.exchAddrs, self.exchConns)
+        # Update addresses in JSON file
+        with open("exchanges_conns.json", "w", encoding="utf-8") as file:
+            json.dump(self.exchConns, file)
 
     # Performs clustering around target address
     async def clusterAddrs(self):
@@ -21,23 +42,16 @@ class HeuristicsClass():
             return
         # Create lists for storing transactions of target address and known exchanegs
         addrTxs = []
-        dexTxs  = []
-        # Get all transactions for address and known exchanges
-        with open("exchanges.json", "r", encoding="utf-8") as file:
-            # Load known exchange addresses
-            exchAddrs = json.load(file)
-
+        # Create session for async requests
         async with ClientSession() as session:
             # Execute address collecting
-            await self.api.runParalel(
-                [partial(self.api.getLinkedAddrs, session, targetAddr, addrTxs)]
-              + [partial(self.api.getLinkedAddrs, session, dexAddr, dexTxs) for dexAddr in exchAddrs
+            await self.api.runParalel([
+                partial(self.api.getLinkedAddrs, session, targetAddr, addrTxs)
             ])
-            # From both lists exclude known exchange addresses
-            addrTxs = filter(lambda x: x not in exchAddrs, addrTxs)
-            dexTxs  = filter(lambda x: x not in exchAddrs, dexTxs)
+            # Exclude known exchange addresses
+            addrTxs = filter(lambda x: x not in self.exchAddrs, addrTxs)
             # Find all similar addresses => deposit addresses
-            depositAddrs = list(set(addrTxs) & set(dexTxs))
+            depositAddrs = list(set(addrTxs) & set(self.exchConns))
             # None found -> return
             if not depositAddrs:
                 return

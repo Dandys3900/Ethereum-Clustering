@@ -27,19 +27,22 @@ class ServerHandler():
             "details" : "txslight"
         }))
         # Check if valid server response
-        if not apiResponse:
+        if not apiResponse or apiResponse.get("transactions", {}) == {}:
             return
         # Get list of transactions
         apiResponse = apiResponse.get("transactions")
         # Iterate over received transaction records
         for tx in apiResponse:
-            txFROMAddr = tx.get("vin")[0].get("addresses")[0]
-            txTOAddr   = tx.get("vout")[0].get("addresses")[0]
-            # Transaction contain target address
-            if addr in [txFROMAddr, txTOAddr]:
-                results.append(
-                    txTOAddr if addr == txFROMAddr else txFROMAddr
-                )
+            try:
+                txFROMAddr = tx.get("vin")[0].get("addresses")[0]
+                txTOAddr   = tx.get("vout")[0].get("addresses")[0]
+                # Transaction contain target address
+                if txTOAddr and addr in [txFROMAddr, txTOAddr]:
+                    results.append(
+                        txTOAddr if addr == txFROMAddr else txFROMAddr
+                    )
+            except Exception:
+                continue
 
     # Collects all addresses targetAddr has any transactions with
     async def getLinkedAddrs(self, session, targetAddr, results:list):
@@ -47,7 +50,7 @@ class ServerHandler():
             "details"  : "txslight"
         })
         # Check if valid server response
-        if not retVal:
+        if not retVal or not retVal.get("totalPages"):
             return
         # Get total number of pages of transaction for target address
         totalPages = retVal.get("totalPages")
@@ -56,7 +59,7 @@ class ServerHandler():
         # Decide whether multi-thread
         if totalPages > 1:
             # Execute address collecting
-            self.runParalel([
-                partial(self.getTxAddrs, session, targetAddr, results, page) for page in totalPages
+            await self.runParalel([
+                partial(self.getTxAddrs, session, targetAddr, results, page) for page in range(2, (totalPages + 1))
             ])
 # End of ServerHandler class

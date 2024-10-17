@@ -35,7 +35,7 @@ class EventHandler():
             case "Search":
                 # Do clustering in separate thread and show results in UI
                 threading.Thread(
-                   target=asyncio.run(self.heuristics.clusterAddrs("0xc04Aa49a24CA82eE5C048F275AEE6E9F74Bd141D"))
+                   target=asyncio.run(self.heuristics.clusterAddrs())
                 ).start()
             case "GitlabRepo":
                 import webbrowser
