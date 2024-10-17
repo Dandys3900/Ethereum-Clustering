@@ -8,13 +8,4 @@ class TrezorAPI(BaseAPI):
         conf = yaml.safe_load(self.openConfigFile(file))["trezor"]
         # Init parent class
         super().__init__(conf["url"])
-        # Check connection
-        self.checkConnection()
-
-    # Initially tests connection with API
-    def checkConnection(self):
-        if self.get("api"):
-            Out.success("Connection to Trezor API is active")
-        else:
-            raise Exception("Failed connection to Trezor API")
 # TrezorAPI class end

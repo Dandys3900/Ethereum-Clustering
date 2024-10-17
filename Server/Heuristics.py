@@ -1,8 +1,9 @@
 # Performs clustering heuristics around target address
 # Imports
 import json
+from aiohttp import ClientSession
 from GUI import App
-from .ServerData_Handler import ServerHandler, partial
+from .ServerData_Handler import ServerHandler, partial, asyncio
 
 class HeuristicsClass():
     def __init__(self, ui:App=None):
@@ -25,25 +26,27 @@ class HeuristicsClass():
         with open("exchanges.json", "r", encoding="utf-8") as file:
             # Load known exchange addresses
             exchAddrs = json.load(file)
+
+        async with ClientSession() as session:
             # Execute address collecting
             await self.api.runParalel(
-                [partial(self.api.getLinkedAddrs, targetAddr, addrTxs)]
-              + [partial(self.api.getLinkedAddrs, dexAddr, dexTxs) for dexAddr in exchAddrs
+                [partial(self.api.getLinkedAddrs, session, targetAddr, addrTxs)]
+              + [partial(self.api.getLinkedAddrs, session, dexAddr, dexTxs) for dexAddr in exchAddrs
             ])
             # From both lists exclude known exchange addresses
             addrTxs = filter(lambda x: x not in exchAddrs, addrTxs)
             dexTxs  = filter(lambda x: x not in exchAddrs, dexTxs)
-        # Find all similar addresses => deposit addresses
-        depositAddrs = list(set(addrTxs) & set(dexTxs))
-        # None found -> return
-        if not depositAddrs:
-            return
-        # From found similar addresses get all addresses sending to them -> results
-        results = []
-        # Execute address collecting
-        await self.api.runParalel([
-            partial(self.api.getLinkedAddrs, depositAddr, results) for depositAddr in depositAddrs
-        ])
+            # Find all similar addresses => deposit addresses
+            depositAddrs = list(set(addrTxs) & set(dexTxs))
+            # None found -> return
+            if not depositAddrs:
+                return
+            # From found similar addresses get all addresses sending to them -> results
+            results = []
+            # Execute address collecting
+            await self.api.runParalel([
+                partial(self.api.getLinkedAddrs, session, depositAddr, results) for depositAddr in depositAddrs
+            ])
         # Add result to UI
         self.ui.addResultAddress(results)
 # End of HeuristicsClass class

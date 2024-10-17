@@ -1,6 +1,6 @@
 # Function for handling UI events
 # Imports
-import csv, asyncio
+import csv, asyncio, threading
 from Helpers import Out
 from GUI import tk
 from Server import HeuristicsClass
@@ -33,8 +33,10 @@ class EventHandler():
     def handleEvent(self, elementName=""):
         match elementName:
             case "Search":
-                # Do clustering and show results in UI
-                asyncio.run(self.heuristics.clusterAddrs())
+                # Do clustering in separate thread and show results in UI
+                threading.Thread(
+                   target=asyncio.run(self.heuristics.clusterAddrs("0xc04Aa49a24CA82eE5C048F275AEE6E9F74Bd141D"))
+                ).start()
             case "GitlabRepo":
                 import webbrowser
                 # Open web browser with repo
