@@ -20,7 +20,7 @@ class HeuristicsClass():
 
     # Performs update of addresses connected to known exchanges
     async def updateExchangeConns(self):
-        self.exchConns.clear()
+        self.exchConns = []
         # Create session for async requests
         async with ClientSession() as session:
             # Execute address collecting
@@ -28,7 +28,7 @@ class HeuristicsClass():
                 partial(self.api.getLinkedAddrs, session, dexAddr, self.exchConns) for dexAddr in self.exchAddrs
             ])
             # Exclude known exchange addresses
-            self.exchConns = filter(lambda x: x not in self.exchAddrs, self.exchConns)
+            self.exchConns = list(filter(lambda x: x not in self.exchAddrs, self.exchConns))
         # Update addresses in JSON file
         with open("exchanges_conns.json", "w", encoding="utf-8") as file:
             json.dump(self.exchConns, file)
@@ -49,7 +49,7 @@ class HeuristicsClass():
                 partial(self.api.getLinkedAddrs, session, targetAddr, addrTxs)
             ])
             # Exclude known exchange addresses
-            addrTxs = filter(lambda x: x not in self.exchAddrs, addrTxs)
+            addrTxs = list(filter(lambda x: x not in self.exchAddrs, addrTxs))
             # Find all similar addresses => deposit addresses
             depositAddrs = list(set(addrTxs) & set(self.exchConns))
             # None found -> return

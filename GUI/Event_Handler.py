@@ -50,6 +50,11 @@ class EventHandler():
                     # Show it
                     self.donateLabel.grid()
                     self.donateLabelShown = True
+            case "Refresh":
+                # Update known addresses connected to known exchanges
+                threading.Thread(
+                   target=asyncio.run(self.heuristics.updateExchangeConns())
+                ).start()
             case "Info":
                 # Construct project text
                 text = (

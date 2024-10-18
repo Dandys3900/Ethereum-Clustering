@@ -17,7 +17,7 @@ class ServerHandler():
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
         tasks = [func() for func in funcsList]
-        await asyncio.gather(*tasks)
+        return await asyncio.gather(*tasks)
 
     # From given transactions, extract addresses
     # NOTE: Store opposite address to found one in transaction
