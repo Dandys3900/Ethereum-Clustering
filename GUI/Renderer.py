@@ -100,7 +100,7 @@ class App(ct.CTk):
             "sticky" : "nw"
         })
         # Create and add buttons to menu with icons
-        for icon in ["GitlabRepo.png", "Donate.png"]:
+        for icon in ["GitlabRepo.png", "Donate.png", "Refresh.png"]:
             self.creator.createButton(self.menu_frame, COLOR_GOLD, (40, 40), icon, frameGrid={
                 "padx" : 10,
                 "pady" : 10

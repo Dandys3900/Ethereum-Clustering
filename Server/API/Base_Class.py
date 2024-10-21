@@ -13,15 +13,15 @@ class BaseAPI():
         # Declare connection variables
         self.url     = url
         self.headers = header
-        self.session = aiohttp.ClientSession()
-        self.session.verify = False
+        # TODO: Set timeout for each GET request to 10s
+        self.timeout = aiohttp.ClientTimeout(total=10)
 
     # Handle GET request to given API endpoint
-    async def get(self, endpoint="", params=None):
+    async def get(self, session=None, endpoint="", params=None):
         # Construct target URL
         url = self.url + endpoint
         try:
-            async with self.session.get(url, headers=self.headers, params=params) as response:
+            async with session.get(url, headers=self.headers, params=params) as response:
                 # Check response status
                 response.raise_for_status()
                 # Return response content
