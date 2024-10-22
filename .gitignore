@@ -1,4 +1,5 @@
 # .gitignore
 addresses.csv
+DEXAddr/
 virtenv/
 __pycache__
