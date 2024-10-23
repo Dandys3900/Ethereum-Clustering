@@ -36,13 +36,13 @@ class HeuristicsClass():
     def getAddrsOfType(self, addrType="", nebula_session=None):
         # Make query to get all addresses of given type
         result = nebula_session.execute(
-            f"LOOKUP ON address WHERE address.type == '{addrType}' YIELD address.address"
+            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN v'
         )
         # Check if any addresses found
         if result.is_empty():
             Out.error(f"No addresses of type {addrType} found")
             return []
-        return result.rows()
+        return result
 
     async def addExchanges(self, nebula_session=None):
         # Add all exchanges to graph
@@ -93,13 +93,14 @@ class HeuristicsClass():
         pool = self.getNebulaPool()
         with pool.session_context('root', 'nebula') as nebula_session:
             # Clear existing data
-            nebula_session.execute("CLEAR SPACE IF EXISTS EthereumClustering")
+            nebula_session.execute('CLEAR SPACE IF EXISTS EthereumClustering')
 
             # Use defined space
             nebula_session.execute('USE EthereumClustering')
-            # Create necessary tags and edges
-            nebula_session.execute("CREATE TAG IF NOT EXISTS address (name string, type string)")
-            nebula_session.execute("CREATE EDGE IF NOT EXISTS linked_to ()")
+            # Create necessary index, tags and edges
+            nebula_session.execute('CREATE TAG IF NOT EXISTS address(name string, type string)')
+            nebula_session.execute('CREATE EDGE IF NOT EXISTS linked_to()')
+            nebula_session.execute('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(name, type)')
 
             # Execute pipeline to construct graph
             await self.addExchanges(nebula_session)

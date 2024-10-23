@@ -25,12 +25,12 @@ class ServerHandler():
     # Handles adding new node to graph
     async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", nebula=None):
         nebula.execute(
-            f"INSERT VERTEX IF NOT EXISTS address(name, type) VALUES '{addr}': ('{addrName}', '{nodeType}')"
+            f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
         )
         # Parent address is given so create a path to it
-        if parentAddr:
+        if len(parentAddr) != 0:
             nebula.execute(
-                f"INSERT EDGE IF NOT EXISTS linked_to() VALUES '{parentAddr}'->'{addr}': ()"
+                f'INSERT EDGE IF NOT EXISTS linked_to() VALUES "{parentAddr}"->"{addr}": ()'
             )
 
     # From given transactions, extract addresses
@@ -51,7 +51,7 @@ class ServerHandler():
                 txFROMAddr = tx.get("vin")[0].get("addresses")[0]
                 txTOAddr   = tx.get("vout")[0].get("addresses")[0]
                 # Transaction contain target address and it's NOT known exchange
-                if addr in [txFROMAddr, txTOAddr] and addr not in self.exchAddrs:
+                if (addr in [txFROMAddr, txTOAddr]) and (addr not in self.exchAddrs):
                     # Determine which address record to add
                     addrKey = (txTOAddr if addr == txFROMAddr else txFROMAddr)
                     # Add address to graph
@@ -68,35 +68,24 @@ class ServerHandler():
     # Collects all addresses targetAddr has any transactions with
     async def getLinkedAddrs(self, session=None, targetAddr="", targetName="", parentAddr="", nodeType="", nebula=None):
         retVal = await self.trezor.get(session, f"v2/address/{targetAddr}", params={
-            "details"  : "txslight"
+            "details" : "txslight"
         })
         # Check if valid server response
         if not retVal or not retVal.get("totalPages"):
             return
         # Get total number of pages of transaction for target address
         totalPages = retVal.get("totalPages")
-        # Process returned transactions (implicitily from first page)
-        await self.getTxAddrs(
-            session,
-            targetAddr,
-            targetName,
-            parentAddr,
-            nodeType,
-            nebula
-        )
-        # Decide whether multi-thread
-        if totalPages > 1:
-            # Execute address collecting
-            await self.runParalel([
-                partial(
-                    self.getTxAddrs,
-                    session,
-                    targetAddr,
-                    targetName,
-                    parentAddr,
-                    nebula,
-                    nodeType,
-                    page
-                ) for page in range(2, (totalPages + 1))
-            ])
+        # Execute address collecting
+        await self.runParalel([
+            partial(
+                self.getTxAddrs,
+                session,
+                targetAddr,
+                targetName,
+                parentAddr,
+                nebula,
+                nodeType,
+                page
+            ) for page in range(1, (totalPages + 1))
+        ])
 # End of ServerHandler class
