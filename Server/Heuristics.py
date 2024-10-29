@@ -33,32 +33,31 @@ class HeuristicsClass():
             Out.error(f"Error while creating Nebula connection: {e}")
             exit(-1)
 
-    def getAddrsOfType(self, addrType="", nebula_session=None):
+    def getAddrsOfType(self, addrType=""):
         # Make query to get all addresses of given type
-        result = nebula_session.execute(
-            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN v'
+        result = self.api.ExecNebulaCommand(
+            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN id(v)'
         )
         # Check if any addresses found
         if result.is_empty():
             Out.error(f"No addresses of type {addrType} found")
             return []
-        return result
+        return [val.as_string() for val in result.column_values("id(v)")]
 
-    async def addExchanges(self, nebula_session=None):
+    async def addExchanges(self):
         # Add all exchanges to graph
         await self.api.runParalel([
             partial(
                 self.api.addNodeToGraph,
                 dexAddr,
                 dexName,
-                nodeType="exchange",
-                nebula=nebula_session
+                nodeType="exchange"
             ) for dexAddr, dexName in self.exchAddrs.items()
         ])
 
-    async def addDepositAddrs(self, nebula_session=None):
+    async def addDepositAddrs(self):
         # Get all found deposit addresses
-        exchAddrs = self.getAddrsOfType("exchange", nebula_session)
+        exchAddrs = self.getAddrsOfType("exchange")
         # Create session for async requests
         async with ClientSession() as trezor_session:
             # Add all addresses interacting with known exchanges -> deposit addresses
@@ -67,14 +66,14 @@ class HeuristicsClass():
                     self.api.getLinkedAddrs,
                     trezor_session,
                     dexAddr,
-                    nodeType="deposit",
-                    nebula=nebula_session
+                    parentAddr=dexAddr,
+                    nodeType="deposit"
                 ) for dexAddr in exchAddrs
             ])
 
-    async def addClusteredAddrs(self, nebula_session=None):
+    async def addClusteredAddrs(self):
         # Get all found deposit addresses
-        exchDepos = self.getAddrsOfType("deposit", nebula_session)
+        exchDepos = self.getAddrsOfType("deposit")
         # Create session for async requests
         async with ClientSession() as trezor_session:
             # Add all addresses interacting with known exchanges -> deposit addresses
@@ -83,8 +82,8 @@ class HeuristicsClass():
                     self.api.getLinkedAddrs,
                     trezor_session,
                     depoAddr,
-                    nodeType="leaf",
-                    nebula=nebula_session
+                    parentAddr=depoAddr,
+                    nodeType="leaf"
                 ) for depoAddr in exchDepos
             ])
 
@@ -92,20 +91,24 @@ class HeuristicsClass():
     async def updateExchangeConns(self):
         pool = self.getNebulaPool()
         with pool.session_context('root', 'nebula') as nebula_session:
+            # Assign this session to server
+            self.api.nebula = nebula_session
+
             # Clear existing data
-            nebula_session.execute('CLEAR SPACE IF EXISTS EthereumClustering')
+            self.api.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
             # Use defined space
-            nebula_session.execute('USE EthereumClustering')
+            self.api.ExecNebulaCommand('USE EthereumClustering')
+
             # Create necessary index, tags and edges
-            nebula_session.execute('CREATE TAG IF NOT EXISTS address(name string, type string)')
-            nebula_session.execute('CREATE EDGE IF NOT EXISTS linked_to()')
-            nebula_session.execute('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(name, type)')
+            self.api.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
+            self.api.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
+            self.api.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to()')
 
             # Execute pipeline to construct graph
-            await self.addExchanges(nebula_session)
-            #await self.addDepositAddrs(nebula_session)
-            #awaitself.addClusteredAddrs(nebula_session)
+            await self.addExchanges()
+            await self.addDepositAddrs()
+            await self.addClusteredAddrs()
         # close the pool
         pool.close()
 
@@ -120,7 +123,7 @@ class HeuristicsClass():
         pool = self.getNebulaPool()
         with pool.session_context('root', 'nebula') as nebula_session:
             # Use defined space
-            nebula_session.execute('USE EthereumClustering')
+            self.api.ExecNebulaCommand('USE EthereumClustering')
 
             if targetAddr in self.getAddrsOfType("leaf", nebula_session):
                 print("FOUND")
