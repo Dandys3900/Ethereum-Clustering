@@ -4,14 +4,11 @@ import json
 from aiohttp import ClientSession
 from nebula3.gclient.net import ConnectionPool
 from nebula3.Config import Config
-from GUI import App
 from Helpers import Out
 from .ServerData_Handler import ServerHandler, partial
 
 class HeuristicsClass():
-    def __init__(self, ui:App=None):
-        # Store UI instance
-        self.ui = ui
+    def __init__(self):
         # Load list of all known exchange addresses
         with open("exchanges.json", "r", encoding="utf-8") as file:
             self.exchAddrs = json.load(file)
@@ -88,7 +85,7 @@ class HeuristicsClass():
             ])
 
     # Performs update of addresses connected to known exchanges
-    async def updateExchangeConns(self):
+    async def updateAddrsDB(self):
         pool = self.getNebulaPool()
         with pool.session_context('root', 'nebula') as nebula_session:
             # Assign this session to server
@@ -113,9 +110,7 @@ class HeuristicsClass():
         pool.close()
 
     # Performs clustering around target address
-    async def clusterAddrs(self):
-        # Load target address inserted by user
-        targetAddr = self.ui.search_bar.get()
+    async def clusterAddrs(self, targetAddr=""):
         # Avoid usage of empty address value
         if not targetAddr:
             return
@@ -130,7 +125,7 @@ class HeuristicsClass():
         # close the pool
         pool.close()
         # Add result to UI
-        #self.ui.addResultAddress(results)
+        #ui.addResultAddress(results)
 # End of HeuristicsClass class
 
 # Workflow:

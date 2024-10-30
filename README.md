@@ -1,0 +1,1 @@
+Run web server from ROOT directory: fastapi dev Server/Web_Server.py

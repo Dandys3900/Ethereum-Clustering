@@ -3,16 +3,17 @@
 import csv, asyncio, threading
 from Helpers import Out
 from GUI import tk
-from Server import HeuristicsClass
 
 # Class handling UI events from App class
 class EventHandler():
     from GUI import ElementCreator
     def __init__(self, creator:ElementCreator=None):
+        from Server import HeuristicsClass
+
         # Store ElementCreator instance
         self.creator = creator
         # Create instance of Heuristics
-        self.heuristics = HeuristicsClass(self.creator.parent)
+        self.heuristics = HeuristicsClass()
 
         # Remember current donate label status
         self.donateLabelShown = False
@@ -53,7 +54,7 @@ class EventHandler():
             case "Refresh":
                 # Update known addresses connected to known exchanges
                 threading.Thread(
-                   target=asyncio.run(self.heuristics.updateExchangeConns())
+                   target=asyncio.run(self.heuristics.updateAddrsDB())
                 ).start()
             case "Info":
                 # Construct project text
