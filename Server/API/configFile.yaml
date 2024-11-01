@@ -1,3 +1,7 @@
 trezor:
   url: "http://147.229.8.210:56300/api/"
   # NOTE: No authentization needed
+
+nebula:
+  addr: "127.0.0.1"
+  port: 9669

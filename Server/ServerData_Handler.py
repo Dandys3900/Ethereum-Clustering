@@ -6,30 +6,18 @@ from Helpers import Out
 from .API import *
 
 class ServerHandler():
-    def __init__(self, exchAddrs):
+    def __init__(self, exchAddrs, nebulaAPI):
         try:
             # Create API instance
             self.trezor = TrezorAPI()
             # Store list of known exchanges
             self.exchAddrs = exchAddrs
-            # Create member to store current Nebula session (if any)
-            self.nebula = None
-            # Create list of invalidated deposit addresses
-            self.prohibDeposAddrs = []
+            # Store Nebula class instance
+            self.nebula = nebulaAPI
         except Exception as e:
             Out.error(e)
             # Exit on API error
             exit(-1)
-
-    # Helper to catch eventual execution errors
-    def ExecNebulaCommand(self, command=""):
-        # Ensure we have valid session
-        assert self.nebula
-        resp = self.nebula.execute(command)
-        # Check for execution errors
-        assert resp.is_succeeded(), resp.error_msg()
-        # Return result (for compatibility reasons)
-        return resp
 
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
@@ -38,31 +26,15 @@ class ServerHandler():
 
     # Handles adding new node to graph
     async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType=""):
-        # Skip already invalidated deposit address
-        if addr in self.prohibDeposAddrs:
-            return
         # Add node (vertex) to graph
-        self.ExecNebulaCommand(
+        self.nebula.ExecNebulaCommand(
             f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
         )
         # Parent address is given so create a path to it
         if parentAddr != "":
-            self.ExecNebulaCommand(
+            self.nebula.ExecNebulaCommand(
                 f'INSERT EDGE IF NOT EXISTS linked_to() VALUES "{addr}"->"{parentAddr}": ()'
             )
-        # Add additional policy for "deposit" node
-        if nodeType == "deposit":
-            # Ensure deposit address transfers constantly to the same exchange, otherwise remove it
-            result = self.ExecNebulaCommand(
-                f'MATCH (v)-[e:linked_to]->() WHERE id(v) == "{addr}" RETURN COUNT(e)'
-            )
-            # If deposit node has more than one edge, our policy is broken so remove the node
-            if result.column_values("COUNT(e)")[0].as_int() != 1:
-                self.ExecNebulaCommand(
-                    f'DELETE VERTEX {addr}'
-                )
-                # Add it to blacklist
-                self.prohibDeposAddrs.append(addr)
 
     # From given transactions, extract addresses
     # NOTE: Store opposite address to found one in transaction

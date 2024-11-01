@@ -20,10 +20,10 @@ async def showHome(request: Request):
     )
 
 # Refresh database
-@app.post("/refreshDB", response_class=HTMLResponse)
-async def refreshDB(request: Request):
-    # Trigger refresh
-    await heuristics.updateAddrsDB()
+@app.get("/refreshDB", response_class=HTMLResponse)
+async def refreshDB(request: Request, refreshScope: int):
+    # Trigger refresh with given scope
+    await heuristics.updateAddrsDB(refreshScope)
     # Render page
     return templates.TemplateResponse(
         request=request,

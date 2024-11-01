@@ -1,5 +1,6 @@
 # Imports
-import requests, urllib3, yaml, aiohttp
+import urllib3, yaml, aiohttp
+from asyncio.exceptions import TimeoutError
 from Helpers import Out
 from pathlib import Path
 
@@ -13,11 +14,11 @@ class BaseAPI():
         # Declare connection variables
         self.url     = url
         self.headers = header
-        # Set (infinite) timeout for each GET request
-        self.timeout = aiohttp.ClientTimeout(total=None)
+        # Set timeout for each GET request to 5mins
+        self.timeout = aiohttp.ClientTimeout(total=300)
 
     # Handle GET request to given API endpoint
-    async def get(self, session=None, endpoint="", params=None):
+    async def get(self, session=None, endpoint="", params=None, retryCount=3):
         # Construct target URL
         url = self.url + endpoint
         try:
@@ -28,6 +29,12 @@ class BaseAPI():
                 if response.content_type == 'application/json':
                     return await response.json()
                 return None
+        except TimeoutError:
+            # Timeout happened 3 times in row, return None
+            if retryCount == 1:
+                return None
+            # Repeat request with decremented retryCount
+            return await self.get(session, endpoint, params, (retryCount - 1))
         except Exception as e:
             # Output exception
             Out.error(e)

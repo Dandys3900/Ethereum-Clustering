@@ -18,20 +18,23 @@
         document.getElementById("loadSpinner").style.display = "none";
       }
 
+      function showRangeValue(rangeElement) {
+        // Get current value of range and update label
+        document.getElementById("refreshLabel").innerText = "Refresh scope: " + rangeElement.value + " %";
+      }
+
       async function submitRefreshRequest(event) {
         event.preventDefault();
         // Show loading bar while we wait
         showLoadingBar();
+
+        rangeValue = document.getElementById("refeshScope").value;
         // Wait for response
-        const response = await fetch("/refreshDB", {
-          method: "POST"
+        const response = await fetch(`/refreshDB?refreshScope=${rangeValue}`, {
+          method: "GET"
         });
-        // Handle response
-        //const result = await response.json();
         // Stop waiting
         hideLoadingBar();
-        // Show results
-        //document.getElementById("result").textContent = result.message;
       }
     </script>
   </head>
@@ -41,6 +44,7 @@
             <h1 style="text-align: center; margin-top: 1em;">
               Ethereum Address Clustering
             </h1>
+
             <!-- Search bar -->
             <div class="col-md-5" style="margin-top: 1em; margin-bottom: 2em;">
                 <form class="d-flex" action="/search" method="get">
@@ -54,7 +58,21 @@
           <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none;"></div>
         </div>
 
+        <!-- List of clustered addresses -->
+        {% if results %}
+          <div class="container mt-5">
+            <h3>Clustered Addresses for {{ targetAddr }}</h3>
+            <ul class="list-group">
+                {% for address in results %}
+                    <li class="list-group-item">{{ address }}</li>
+                {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
         <form onsubmit="submitRefreshRequest(event)" style="position: absolute; top: 10px; right: 10px;">
+          <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
+          <input type="range" class="form-range" min="0" max="100" step="1" id="refeshScope" onmousemove="showRangeValue(this)">
           <button class="btn btn-danger" type="submit">Refresh Database</button>
         </form>
     </div>
