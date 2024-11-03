@@ -115,16 +115,20 @@ class HeuristicsClass():
                 f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
             ), "id(deposit)")
 
+            # Construct data for subgraph containing these addresses
+            subGraphdata = self.nebula.ExecNebulaCommand(
+                f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{targetAddrDepo}" YIELD VERTICES AS nodes, EDGES AS edges'
+            )
+            subGraphdata = subGraphdata.dict_for_vis()
+
             # Find all leaf addresses with same deposit address
-            clustrAddrs = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
+            clustrAddrsList = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
                 f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(deposit) == "{targetAddrDepo}" RETURN id(leaf)'
             ), "id(leaf)")
         # close the pool
         pool.close()
-        # Return clustered addresses
-        return clustrAddrs
-        # Add result to UI
-        #ui.addResultAddress(results)
+        # Return prepared data
+        return clustrAddrsList, subGraphdata
 # End of HeuristicsClass class
 
 # Workflow:

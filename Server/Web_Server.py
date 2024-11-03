@@ -34,13 +34,14 @@ async def refreshDB(request: Request, refreshScope: int):
 @app.get("/search", response_class=HTMLResponse)
 async def searchAddr(request: Request, targetAddr: str):
     # Collect addresses
-    results = await heuristics.clusterAddrs(targetAddr)
+    resultsList, resultsGraph = await heuristics.clusterAddrs(targetAddr)
     # Render page
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
-            "targetAddr" : targetAddr,
-            "results"    : results
+            "targetAddr"   : targetAddr,
+            "resultsList"  : resultsList,
+            "resultsGraph" : resultsGraph
         }
     )
