@@ -117,9 +117,9 @@ class HeuristicsClass():
 
             # Construct data for subgraph containing these addresses
             subGraphdata = self.nebula.ExecNebulaCommand(
-                f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{targetAddrDepo}" YIELD VERTICES AS nodes, EDGES AS edges'
+                f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{targetAddrDepo}" YIELD VERTICES AS nodes, EDGES AS links'
             )
-            subGraphdata = subGraphdata.dict_for_vis()
+            subGraphdata = json.dumps(subGraphdata.dict_for_vis(), indent=2, sort_keys=True)
 
             # Find all leaf addresses with same deposit address
             clustrAddrsList = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(

@@ -76,20 +76,19 @@
         {% if resultsGraph %}
           <div id="container" style="height: 100%"></div>
           <script type="text/javascript">
-              var addrChart = echarts.init(document.getElementById('container'), null, {
-                  renderer: 'canvas',
-                  useDirtyRect: false
+              var addrChart = echarts.init(dom=document.getElementById('container'), opts={
+                  renderer: 'canvas'
               });
 
               // Get data from Python
-              var data = {{ resultsGraph }};
+              var data = {{ resultsGraph | safe }};
 
               let graph = {
                 nodes: data.nodes.map(node => ({
                   ...node,
                   symbolSize: 5,
-                  name: node.props.name ? node.props.name : node.id,
-                  value: node.props
+                  name: node.id,
+                  value: node.props.type
                 })),
                 links: data.edges.map(edge => ({
                   source: edge.src,
@@ -97,17 +96,21 @@
                 }))
               };
 
-              option = {
-                title: {
-                  text: 'Clustered Addresses',
-                  subtext: 'Default layout',
-                  top: 'bottom',
-                  left: 'right'
-                },
-                tooltip: {},
-              };
+              addrChart.setOption({
+                series: [
+                  {
+                    name: 'Clustered Addresses',
+                    type: 'graph',
+                    layout: 'force',
+                    data: graph.nodes,
+                    links: graph.links,
+                    categories: [],
+                    roam: true
+                  }
+                ]
+              });
 
-              window.addEventListener('resize', myChart.resize);
+              window.addEventListener('resize', addrChart.resize);
           </script>
         {% endif %}
 
