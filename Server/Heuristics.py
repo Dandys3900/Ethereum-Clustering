@@ -93,10 +93,6 @@ class HeuristicsClass():
 
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):
-        # Avoid usage of empty address value
-        if targetAddr == "":
-            return []
-
         # Get all clustered addresses and check if target address is in any
         pool = self.nebula.getNebulaPool()
         with pool.session_context('root', 'nebula') as nebula_session:
@@ -107,8 +103,8 @@ class HeuristicsClass():
             self.nebula.ExecNebulaCommand('USE EthereumClustering')
 
             # Try and check if any known leaf matches this address
-            if targetAddr not in self.nebula.getAddrsOfType("leaf"):
-                return ["Given address not found"]
+            if targetAddr.upper() not in self.nebula.getAddrsOfType("leaf"):
+                return "", ""
 
             # Find deposit address of tagret address
             targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
@@ -125,6 +121,7 @@ class HeuristicsClass():
             clustrAddrsList = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
                 f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(deposit) == "{targetAddrDepo}" RETURN id(leaf)'
             ), "id(leaf)")
+            clustrAddrsList = json.dumps(clustrAddrsList, indent=2)
         # close the pool
         pool.close()
         # Return prepared data
