@@ -40,7 +40,6 @@ async def searchAddr(request: Request, targetAddr: str):
         request=request,
         name="index.html",
         context={
-            "targetAddr"   : targetAddr,
             "resultsList"  : resultsList,
             "resultsGraph" : resultsGraph
         }
