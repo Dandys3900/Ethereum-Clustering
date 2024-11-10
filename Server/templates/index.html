@@ -39,150 +39,169 @@
   <body>
     <div class="container">
       <div class="row justify-content-center">
-          <h1 style="text-align: center; margin-top: 1em;">
-            Ethereum Address Clustering
-          </h1>
+        <h1 style="text-align: center; margin-top: 1em;">
+          Ethereum Address Clustering
+        </h1>
 
-          <!-- Search bar -->
-          <div class="col-md-5" style="margin-top: 1em; margin-bottom: 2em;">
-              <form class="d-flex" action="/search" method="get">
-                  <input class="form-control me-2" type="search" placeholder="Enter address" aria-label="Search" name="targetAddr" required pattern="^0X[0-9A-Fa-f]{40}$">
-                  <button class="btn btn-primary" type="submit">Search</button>
-              </form>
+        <!-- Search bar -->
+        <div class="col-md-5" style="margin-top: 1em; margin-bottom: 2em;">
+          <form class="d-flex" action="/search" method="get">
+            <input class="form-control me-2" type="search" placeholder="Enter address" aria-label="Search" name="targetAddr" required pattern="^0X[0-9A-Fa-f]{40}$">
+            <button class="btn btn-primary" type="submit">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Refresh database form -->
+    <form onsubmit="submitRefreshRequest(event)" style="position: absolute; top: 10px; right: 10px; width: 250px;">
+      <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
+      <input type="range" class="form-range" min="1" max="100" step="1" id="refeshScope" onmousemove="showRangeValue(this)">
+      <button class="btn btn-danger" type="submit">Refresh Database</button>
+      <!-- Clustered addresses count -->
+      <div id="res_charts" style="height: 150px; width: 250px;"></div>
+    </form>
+
+    <div class="row justify-content-center">
+      <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none;"></div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="d-flex gap-2">
+          <div class="col-md-3">
+            <div id="exports" style="display: none; gap: 5px;">
+              <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
+              <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
+            </div>
+            <div id="data_table"></div>
+          </div>
+          <div class="col" style="padding-right: 10px;">
+            <div id="container" style="height: 100%;"></div>
           </div>
       </div>
     </div>
-      <!-- Refresh database form -->
-      <form onsubmit="submitRefreshRequest(event)" style="position: absolute; top: 10px; right: 10px; width: 250px;">
-        <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
-        <input type="range" class="form-range" min="1" max="100" step="1" id="refeshScope" onmousemove="showRangeValue(this)">
-        <button class="btn btn-danger" type="submit">Refresh Database</button>
-      </form>
 
-      <div class="row justify-content-center">
-        <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none;"></div>
-      </div>
+    <!-- List of clustered addresses -->
+    {% if resultsList %}
+      <script type="text/javascript">
+        // Get data from Python
+        var data = {{ resultsList | safe }};
 
-      <div class="container-fluid">
-        <div class="d-flex gap-2">
-            <div class="col-md-3">
-              <div id="exports" style="display: none; gap: 5px;">
-                <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
-                <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
-              </div>
-              <div id="data_table"></div>
-            </div>
-            <div class="col" style="padding-right: 10px;">
-              <div id="container" style="height: 100%;"></div>
-            </div>
-        </div>
-      </div>
+        // Create results table
+        var table = new gridjs.Grid({
+          columns: ["Entity"],
+          data: data.map(value => [value]),
+          pagination: {
+              limit: 20
+          },
+          resizable: true,
+          search: true
+        }).render(document.getElementById("data_table"));
 
-      <!-- List of clustered addresses -->
-      {% if resultsList %}
-        <script type="text/javascript">
+        function exportJSON() {
+          const json = JSON.stringify(data.nodes.map(row => row.id), null, 2);
+          downloadFile("data.json", json);
+        }
+
+        function exportCSV() {
+          const csv = data.nodes.map(row => row.id).join(",\n");
+          downloadFile("data.csv", csv);
+        }
+
+        function downloadFile(filename, content) {
+          const blob = new Blob([content], { type: "text/plain" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          link.click();
+        }
+
+        // Show export buttons
+        document.getElementById("exports").style.display = "flex";
+
+        // Render chart for count of clustered addresses
+        var countChart = echarts.init(document.getElementById("res_charts"));
+        countChart.setOption({
+          series: [{
+            name: "Address count",
+            type: "gauge",
+            progress: {
+              show: true
+            },
+            axisLabel: { show: false }, axisTick: { show: false },
+            detail: {
+              valueAnimation: true
+            },
+            data: [{
+              value: table.config.data.length
+            }]
+          }]
+        });
+      </script>
+    {% endif %}
+
+    <!-- Render graph for results -->
+    {% if resultsGraph %}
+      <script type="text/javascript">
+        // Wrap chart crration into timeout to ensure hosting element is created before chart
+        setTimeout(function () {
+          var addrChart = echarts.init(dom=document.getElementById("container"), opts={
+            renderer: "canvas"
+          });
+
           // Get data from Python
-          var data = {{ resultsList | safe }};
+          var data = {{ resultsGraph | safe }};
+          // Create styling for each type of no`de
+          let nodeStyles = {
+            "exchange": 12,
+            "deposit" : 10,
+            "leaf"    : 8
+          };
 
-          // Create results table
-          var table = new gridjs.Grid({
-              columns: ["Entity"],
-              data: data.map(value => [value]),
-              pagination: {
-                  limit: 20
+          let graph = {
+            nodes: data.nodes.map(node => ({
+              ...node,
+              symbolSize: nodeStyles[node.props.type],
+              name      : node.id,
+              value     : node.props,
+              category  : node.props.type
+            })),
+            links: data.edges.map(edge => ({
+              source: edge.src,
+              target: edge.dst
+            })),
+            categories: ["exchange", "deposit", "leaf"].map(function (category) {
+              return {name: category};
+            })
+          };
+
+          addrChart.setOption({
+            legend: [{
+              data: ["exchange", "deposit", "leaf"]
+            }],
+            series: [{
+              type      : "graph",
+              layout    : "force",
+              data      : graph.nodes,
+              links     : graph.links,
+              categories: graph.categories,
+              roam      : true,
+              label: {
+                position : "right",
+                formatter: "{b}"
               },
-              resizable: true,
-              search: true
-          }).render(document.getElementById("data_table"));
+              force: {
+                repulsion: 0,
+                friction : 0,
+                gravity  : 0
+              }
+            }]
+          });
 
-          function exportJSON() {
-            const json = JSON.stringify(data.nodes.map(row => row.id), null, 2);
-            downloadFile("data.json", json);
-          }
-
-          function exportCSV() {
-            const csv = data.nodes.map(row => row.id).join(",\n");
-            downloadFile("data.csv", csv);
-          }
-
-          function downloadFile(filename, content) {
-            const blob = new Blob([content], { type: "text/plain" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-          }
-
-          // Show export buttons
-          document.getElementById("exports").style.display = "flex";
-        </script>
-      {% endif %}
-
-      <!-- Render graph for results -->
-      {% if resultsGraph %}
-        <script type="text/javascript">
-          // Wrap chart crration into timeout to ensure hosting element is created before chart
-          setTimeout(function () {
-            var addrChart = echarts.init(dom=document.getElementById("container"), opts={
-              renderer: "canvas"
-            });
-
-            // Get data from Python
-            var data = {{ resultsGraph | safe }};
-            // Create styling for each type of no`de
-            let nodeStyles = {
-              "exchange": 12,
-              "deposit" : 10,
-              "leaf"    : 8
-            };
-
-            let graph = {
-              nodes: data.nodes.map(node => ({
-                ...node,
-                symbolSize: nodeStyles[node.props.type],
-                name      : node.id,
-                value     : node.props,
-                category  : node.props.type
-              })),
-              links: data.edges.map(edge => ({
-                source: edge.src,
-                target: edge.dst
-              })),
-              categories: ["exchange", "deposit", "leaf"].map(function (category) {
-                return {name: category};
-              })
-            };
-
-            addrChart.setOption({
-              legend: [{
-                data: ["exchange", "deposit", "leaf"]
-              }],
-              series: [{
-                type      : "graph",
-                layout    : "force",
-                data      : graph.nodes,
-                links     : graph.links,
-                categories: graph.categories,
-                roam      : true,
-                label: {
-                  position : "right",
-                  formatter: "{b}"
-                },
-                force: {
-                  repulsion: 0,
-                  friction : 0,
-                  gravity  : 0
-                },
-                emphasis: {
-                  focus: "adjacency"
-                }
-              }]
-            });
-
-            // Add listener for web-page resize events
-            window.addEventListener("resize", addrChart.resize);
-          }, 100);
-        </script>
-      {% endif %}
+          // Add listener for web-page resize events
+          window.addEventListener("resize", addrChart.resize);
+        }, 100);
+      </script>
+    {% endif %}
   </body>
 </html>

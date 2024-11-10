@@ -106,22 +106,24 @@ class HeuristicsClass():
             if targetAddr.upper() not in self.nebula.getAddrsOfType("leaf"):
                 return "", ""
 
-            # Find deposit address of tagret address
+            # Find deposit address(es) of target address
             targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
                 f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
             ), "id(deposit)")
 
-            # Construct data for subgraph containing these addresses
-            subGraphdata = self.nebula.ExecNebulaCommand(
-                f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{targetAddrDepo}" YIELD VERTICES AS nodes, EDGES AS links'
-            )
-            subGraphdata = json.dumps(subGraphdata.dict_for_vis(), indent=2, sort_keys=True)
+            subGraphdata = ""
+            clustrAddrsList = ""
+            # Iterate over all found deposit addresses
+            for depoAddr in targetAddrDepo:
+                # Construct data for subgraph containing these addresses
+                subGraphdata += json.dumps(self.nebula.ExecNebulaCommand(
+                    f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{depoAddr}" YIELD VERTICES AS nodes, EDGES AS links'
+                ).dict_for_vis(), indent=2, sort_keys=True)
 
-            # Find all leaf addresses with same deposit address
-            clustrAddrsList = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-                f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(deposit) == "{targetAddrDepo}" RETURN id(leaf)'
-            ), "id(leaf)")
-            clustrAddrsList = json.dumps(clustrAddrsList, indent=2)
+                # Find all leaf addresses with same deposit address
+                clustrAddrsList += json.dumps(self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
+                    f'MATCH (leaf:address)-[e:linked_to]->(deposit) WHERE id(deposit) == "{depoAddr}" AND leaf.address.type == "leaf" RETURN id(leaf)'
+                ), "id(leaf)"), indent=2)
         # close the pool
         pool.close()
         # Return prepared data

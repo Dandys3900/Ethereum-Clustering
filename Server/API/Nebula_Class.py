@@ -45,11 +45,6 @@ class NebulaAPI(BaseAPI):
     def toArrayTransform(self, result, pivot):
         if result.is_empty():
             return []
-        # Get values for specified pivot column
-        columnVals = result.column_values(pivot)
-        # Contains single element, return it
-        if len(columnVals) == 1:
-            return columnVals[0].as_string()
         # Create list and return it
         return [val.as_string() for val in result.column_values(pivot)]
 
