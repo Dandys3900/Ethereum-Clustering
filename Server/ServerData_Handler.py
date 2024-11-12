@@ -25,15 +25,16 @@ class ServerHandler():
         return await asyncio.gather(*tasks)
 
     # Handles adding new node to graph
-    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType=""):
+    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
         # Add node (vertex) to graph
         self.nebula.ExecNebulaCommand(
             f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
         )
         # Parent address is given so create a path to it
         if parentAddr != "":
+            #f'INSERT EDGE IF NOT EXISTS linked_to() VALUES "{addr}"->"{parentAddr}": ()'
             self.nebula.ExecNebulaCommand(
-                f'INSERT EDGE IF NOT EXISTS linked_to() VALUES "{addr}"->"{parentAddr}": ()'
+                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}'
             )
 
     # From given transactions, extract addresses
@@ -57,6 +58,8 @@ class ServerHandler():
             try:
                 txFROMAddr = str(tx.get("vin")[0].get("addresses")[0]).upper()
                 txTOAddr   = str(tx.get("vout")[0].get("addresses")[0]).upper()
+                # Convert from Wei -> Ether
+                txAmount = float(tx.get("vout")[0].get("value")) / 1_000_000_000_000_000_000
 
                 # Transaction contain target address and it's NOT known exchange
                 if addr in [txFROMAddr, txTOAddr]:
@@ -69,7 +72,8 @@ class ServerHandler():
                         addrKey,
                         addrName,
                         parentAddr,
-                        nodeType
+                        nodeType,
+                        txAmount
                     )
             except Exception as e:
                 Out.error(f"getTxAddrs() error: {e}")
