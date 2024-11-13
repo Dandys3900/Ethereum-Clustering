@@ -109,7 +109,7 @@ class HeuristicsClass():
 
             # Find deposit address(es) of target address
             targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-                f'MATCH (leaf)-[e:linked_to]->(deposit) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
+                f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
             ), "id(deposit)")
 
             subGraphdata = ""
@@ -123,7 +123,7 @@ class HeuristicsClass():
 
                 # Find all leaf addresses with same deposit address
                 clustrAddrsList += json.dumps(self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-                    f'MATCH (leaf:address)-[e:linked_to]->(deposit) WHERE id(deposit) == "{depoAddr}" AND leaf.address.type == "leaf" RETURN id(leaf)'
+                    f'MATCH (leaf:address)-->(deposit:address) WHERE id(deposit) == "{depoAddr}" AND leaf.address.type == "leaf" RETURN id(leaf)'
                 ), "id(leaf)"), indent=2)
         # close the pool
         pool.close()

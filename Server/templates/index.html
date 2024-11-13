@@ -54,6 +54,9 @@
             <!-- Clustered addresses count -->
             <div class="col">
                 <div id="res_charts" style="display: block; height: 150px; width: 250px;"></div>
+                <div class="progress" style="width: 70%; margin-bottom: 1em;">
+                    <div id="totalAmount" class="progress-bar" role="progressbar" aria-valuemin="0"></div>
+                </div>
             </div>
 
             <!-- Search bar -->
@@ -181,6 +184,7 @@
             "leaf"    : 8
           };
 
+          let totalEtherAmount = 0;
           let graph = {
             nodes: data.nodes.map(node => ({
               ...node,
@@ -189,16 +193,35 @@
               value     : node.props,
               category  : node.props.type
             })),
-            links: data.edges.map(edge => ({
-              source: edge.src,
-              target: edge.dst
-            })),
+            links: data.edges.map(edge => {
+                // Collect sum of all transferred Ether for cluster
+                totalEtherAmount += parseFloat(edge.props.amount);
+                return {
+                    source: edge.src,
+                    target: edge.dst,
+                    amount: edge.props.amount
+                };
+            }),
             categories: ["exchange", "deposit", "leaf"].map(function (category) {
-              return {name: category};
+              return {
+                name: category
+              };
             })
           };
 
+          // Update bar showing total amount of Ether
+          const item = document.getElementById("totalAmount");
+          item.ariaValueNow = item.ariaValueMax = totalEtherAmount;
+          item.textContent = "Total sent Ether by cluster: " + totalEtherAmount;
+
           addrChart.setOption({
+            tooltip: {
+                trigger: "item",
+                formatter: function (params) {
+                    if (params.dataType === "edge")
+                        return `Ether amount: ${params.data.amount}`;
+                }
+            },
             legend: [{
               data: ["exchange", "deposit", "leaf"]
             }],
@@ -210,13 +233,16 @@
               categories: graph.categories,
               roam      : true,
               label: {
-                position : "right",
-                formatter: "{b}"
+                show: true,
+                position : "right"
               },
               force: {
                 repulsion: 0,
                 friction : 0,
                 gravity  : 0
+              },
+              lineStyle: {
+                color: "source"
               }
             }]
           });
