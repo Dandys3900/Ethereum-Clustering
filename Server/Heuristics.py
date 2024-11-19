@@ -79,7 +79,6 @@ class HeuristicsClass():
             # Create necessary index, tags and edges
             self.nebula.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
             self.nebula.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
-            #self.nebula.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to()')
             self.nebula.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0)')
 
             # Execute pipeline to construct graph

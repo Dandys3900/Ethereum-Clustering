@@ -54,7 +54,7 @@
             <!-- Clustered addresses count -->
             <div class="col">
                 <div id="res_charts" style="display: block; height: 150px; width: 250px;"></div>
-                <div class="progress" style="width: 70%; margin-bottom: 1em;">
+                <div class="progress" style="display: none; width: 70%; margin-bottom: 1em;">
                     <div id="totalAmount" class="progress-bar" role="progressbar" aria-valuemin="0"></div>
                 </div>
             </div>
@@ -211,6 +211,7 @@
 
           // Update bar showing total amount of Ether
           const item = document.getElementById("totalAmount");
+          item.style.display = "block";
           item.ariaValueNow = item.ariaValueMax = totalEtherAmount;
           item.textContent = "Total sent Ether by cluster: " + totalEtherAmount;
 
