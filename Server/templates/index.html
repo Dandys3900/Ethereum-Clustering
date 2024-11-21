@@ -54,7 +54,7 @@
             <!-- Clustered addresses count -->
             <div class="col">
                 <div id="res_charts" style="display: block; height: 150px; width: 250px;"></div>
-                <div class="progress" style="display: none; width: 70%; margin-bottom: 1em;">
+                <div id="amountDiv" class="progress" style="display: none; width: 70%; margin-bottom: 1em;">
                     <div id="totalAmount" class="progress-bar" role="progressbar" aria-valuemin="0"></div>
                 </div>
             </div>
@@ -125,12 +125,12 @@
         }).render(document.getElementById("data_table"));
 
         function exportJSON() {
-          const json = JSON.stringify(data.nodes.map(row => row.id), null, 2);
+          const json = JSON.stringify(data.map(row => row), null, 2);
           downloadFile("data.json", json);
         }
 
         function exportCSV() {
-          const csv = data.nodes.map(row => row.id).join(",\n");
+          const csv = data.map(row => row).join(",\n");
           downloadFile("data.csv", csv);
         }
 
@@ -210,8 +210,8 @@
           };
 
           // Update bar showing total amount of Ether
+          document.getElementById("amountDiv").style.display = "block";
           const item = document.getElementById("totalAmount");
-          item.style.display = "block";
           item.ariaValueNow = item.ariaValueMax = totalEtherAmount;
           item.textContent = "Total sent Ether by cluster: " + totalEtherAmount;
 
@@ -234,7 +234,6 @@
               categories: graph.categories,
               roam      : true,
               label: {
-                show: true,
                 position : "right"
               },
               force: {
