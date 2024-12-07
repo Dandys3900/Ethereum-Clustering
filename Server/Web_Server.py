@@ -23,7 +23,7 @@ async def showHome(request: Request):
 @app.get("/refreshDB", response_class=HTMLResponse)
 async def refreshDB(request: Request, refreshScope: int):
     # Trigger refresh with given scope
-    await heuristics.updateAddrsDB(refreshScope)
+    await heuristics.updateAddrsDB(scope=refreshScope)
     # Render page
     return templates.TemplateResponse(
         request=request,
@@ -34,7 +34,7 @@ async def refreshDB(request: Request, refreshScope: int):
 @app.get("/search", response_class=HTMLResponse)
 async def searchAddr(request: Request, targetAddr: str):
     # Collect addresses
-    resultsList, resultsGraph = await heuristics.clusterAddrs(targetAddr)
+    resultsList, resultsGraph = await heuristics.clusterAddrs(targetAddr=targetAddr)
     # Render page
     return templates.TemplateResponse(
         request=request,

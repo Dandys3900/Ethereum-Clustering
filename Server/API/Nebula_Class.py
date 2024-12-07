@@ -1,4 +1,5 @@
 # Imports
+import atexit
 from .Base_Class import BaseAPI, yaml, Out
 from nebula3.gclient.net import ConnectionPool
 from nebula3.Config import Config
@@ -10,12 +11,11 @@ class NebulaAPI(BaseAPI):
         self.conf = yaml.safe_load(self.openConfigFile(file))["nebula"]
         # Init parent class
         super().__init__()
-        # Create member to store current Nebula session (if any)
-        self.nebula = None
-
-    # Setter for Nebula session
-    def setNebulaSession(self, session):
-        self.nebula = session
+        # Create Nebula session
+        self.session = self.getNebulaPool().get_session('root', 'nebula')
+        # Ensure cleanup at exit
+        atexit.register(self.session.release)
+        atexit.register(self.getNebulaPool().close)
 
     # Init connection to Nebula instance and return pool to use
     def getNebulaPool(self):
@@ -32,11 +32,23 @@ class NebulaAPI(BaseAPI):
             Out.error(f"Error while creating Nebula connection: {e}")
             exit(-1)
 
+    # Handles adding new node to graph
+    def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
+        # Add node (vertex) to graph
+        self.ExecNebulaCommand(
+            f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
+        )
+        # Parent address is given so create a path to it
+        if parentAddr != "":
+            self.ExecNebulaCommand(
+                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}'
+            )
+
     # Helper to catch eventual execution errors
     def ExecNebulaCommand(self, command=""):
         # Ensure we have valid session
-        assert self.nebula
-        resp = self.nebula.execute(command)
+        assert self.session
+        resp = self.session.execute(command)
         # Check for execution errors
         assert resp.is_succeeded(), resp.error_msg()
         # Return result (for compatibility reasons)

@@ -44,6 +44,24 @@
         // Stop waiting/loading
         document.getElementById("loadSpinner").style.display = "none";
       }
+
+      function exportJSON() {
+        const json = JSON.stringify(data.map(row => row), null, 2);
+        downloadFile("data.json", json);
+      }
+
+      function exportCSV() {
+        const csv = data.map(row => row).join(",\n");
+        downloadFile("data.csv", csv);
+      }
+
+      function downloadFile(filename, content) {
+        const blob = new Blob([content], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
     </script>
   </head>
   <body>
@@ -123,24 +141,6 @@
           resizable: true,
           search: true
         }).render(document.getElementById("data_table"));
-
-        function exportJSON() {
-          const json = JSON.stringify(data.map(row => row), null, 2);
-          downloadFile("data.json", json);
-        }
-
-        function exportCSV() {
-          const csv = data.map(row => row).join(",\n");
-          downloadFile("data.csv", csv);
-        }
-
-        function downloadFile(filename, content) {
-          const blob = new Blob([content], { type: "text/plain" });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = filename;
-          link.click();
-        }
 
         // Show export buttons
         document.getElementById("exports").style.display = "flex";

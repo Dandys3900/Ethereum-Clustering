@@ -6,12 +6,10 @@ from Helpers import Out
 from .API import *
 
 class ServerHandler():
-    def __init__(self, exchAddrs, nebulaAPI):
+    def __init__(self, nebulaAPI):
         try:
             # Create API instance
             self.trezor = TrezorAPI()
-            # Store list of known exchanges
-            self.exchAddrs = exchAddrs
             # Store Nebula class instance
             self.nebula = nebulaAPI
         except Exception as e:
@@ -19,23 +17,15 @@ class ServerHandler():
             # Exit on API error
             exit(-1)
 
+    # Setter to let class know about known exchanges
+    def setExchangeAddrs(self, exchAddrs):
+        # Store list of known exchanges
+        self.exchAddrs = exchAddrs
+
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
         tasks = [func() for func in funcsList]
         return await asyncio.gather(*tasks)
-
-    # Handles adding new node to graph
-    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
-        # Add node (vertex) to graph
-        self.nebula.ExecNebulaCommand(
-            f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
-        )
-        # Parent address is given so create a path to it
-        if parentAddr != "":
-            #f'INSERT EDGE IF NOT EXISTS linked_to() VALUES "{addr}"->"{parentAddr}": ()'
-            self.nebula.ExecNebulaCommand(
-                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}'
-            )
 
     # From given transactions, extract addresses
     # NOTE: Store opposite address to found one in transaction
@@ -68,7 +58,7 @@ class ServerHandler():
                     if addrKey in self.exchAddrs:
                         return
                     # Add address to graph
-                    await self.addNodeToGraph(
+                    self.nebula.addNodeToGraph(
                         addrKey,
                         addrName,
                         parentAddr,
