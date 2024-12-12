@@ -1,5 +1,5 @@
 ARG PYTHON_VERSION=3.12.5
-FROM python:${PYTHON_VERSION}-slim as builder
+FROM python:${PYTHON_VERSION}-slim AS builder
 
 # Prevents Python from writing pyc files and from buffering stdout and stderr.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -14,16 +14,23 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 # Now copy the rest of the application
 COPY . .
 
-# Create a non-privileged user that the app will run under.
-RUN groupadd -g 1000 NonPrivUsers && \
-    useradd -r -g NonPrivUsers executor && \
-    chown executor:NonPrivUsers /app
+# Create a group for admin users
+RUN groupadd -g 1001 AdminUsers
+
+# Create an admin user and add to the group
+RUN useradd -r -g AdminUsers admin && \
+    chown admin:AdminUsers /app && \
+    mkdir -p /home/admin/.nebulagraph/lite && \
+    chown admin:AdminUsers /home/admin/.nebulagraph/lite
+
+# Ensure the admin user has the necessary permissions
+RUN chmod 755 /home/admin/.nebulagraph/lite
 
 # Switch to the non-privileged user to run the application
-USER executor
+USER admin
 
 # Expose the port that the application listens on
 EXPOSE 8000
 
 # Run the application.
-CMD fastapi dev Server/Web_Server.py
+CMD ["uvicorn", "Server.Web_Server:app", "--host", "0.0.0.0", "--port", "8000"]

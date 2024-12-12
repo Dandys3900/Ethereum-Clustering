@@ -58,7 +58,7 @@ class ServerHandler():
                     if addrKey in self.exchAddrs:
                         return
                     # Add address to graph
-                    self.nebula.addNodeToGraph(
+                    await self.nebula.addNodeToGraph(
                         addrKey,
                         addrName,
                         parentAddr,

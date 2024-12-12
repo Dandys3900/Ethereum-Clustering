@@ -21,6 +21,8 @@ class HeuristicsClass():
         )
         # Set default (production) Nebula space
         self.targetSpace = "EthereumClustering"
+        # Make sure space is created
+        self.nebula.createSpace(self.targetSpace)
 
     # Setter for Nebula space (used by unitests)
     def setNebulaSpace(self, newSpace=""):
@@ -75,16 +77,12 @@ class HeuristicsClass():
     # Performs update of addresses connected to known exchanges
     # Scope in interval <0, 100> percentage
     async def updateAddrsDB(self, scope=100):
+        Out.warning(f"Beginning refresh of DB with scope: {scope}")
         # Clear existing data
         self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Use defined space
         self.nebula.ExecNebulaCommand('USE EthereumClustering')
-
-        # Create necessary index, tags and edges
-        self.nebula.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
-        self.nebula.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
-        self.nebula.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0)')
 
         # Execute pipeline to construct graph
         await self.addExchanges(scope)
@@ -93,6 +91,7 @@ class HeuristicsClass():
 
         # When done, rebuild index with new data
         self.nebula.ExecNebulaCommand('REBUILD TAG INDEX addrs_index')
+        Out.success("Refresh of DB was succesful")
 
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):

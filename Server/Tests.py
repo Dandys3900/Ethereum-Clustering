@@ -11,6 +11,8 @@ class TestsClass(unittest.TestCase):
         self.heuristics = HeuristicsClass()
         # Init Nebula to interact with database
         self.nebula = NebulaAPI()
+        # Make sure space is created
+        self.nebula.createSpace("MockSpace")
 
     # Performs clearance of address database
     def recreateDB(self):
@@ -19,11 +21,6 @@ class TestsClass(unittest.TestCase):
 
         # Use defined space
         self.nebula.ExecNebulaCommand('USE MockSpace')
-
-        # Create necessary index, tags and edges
-        self.nebula.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
-        self.nebula.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
-        self.nebula.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0)')
 
         # Sleep 20 seconds to ensure tags and edges are created
         time.sleep(20)

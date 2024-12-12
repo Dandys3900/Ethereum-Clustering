@@ -3,5 +3,5 @@ trezor:
   # NOTE: No authentization needed
 
 nebula:
-  addr: "nebula-graphd"
+  addr: "graphd"
   port: 9669
