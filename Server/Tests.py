@@ -1,13 +1,13 @@
 # Class for unittests
 # Imports
-import time, unittest
+import pytest
 from .API import NebulaAPI
 from .Heuristics import HeuristicsClass
 from Server.Web_Server import app,heuristics
 from fastapi.testclient import TestClient
 
-class TestsClass(unittest.TestCase):
-    def setUp(self):
+class TestsClass():
+    def __init__(self):
         self.heuristics = HeuristicsClass()
         # Init Nebula to interact with database
         self.nebula = NebulaAPI()
@@ -22,72 +22,71 @@ class TestsClass(unittest.TestCase):
         # Use defined space
         self.nebula.ExecNebulaCommand('USE MockSpace')
 
-        # Sleep 20 seconds to ensure tags and edges are created
-        time.sleep(20)
-
     # Fill database with test data
-    def fillDB(self):
+    async def fillDB(self):
         ######## Add one exchange address ########
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000000",
             "mock exchange",
             nodeType="exchange"
         )
         ######## Add two deposit addresses ########
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000001",
             "mock deposit 1",
             parentAddr="0X0000000000000000000000000000000000000000",
             nodeType="deposit"
         )
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000002",
             "mock deposit 2",
             parentAddr="0X0000000000000000000000000000000000000000",
             nodeType="deposit"
         )
         ######## Add four leaf addresses - two for each deposit ########
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000003",
             "mock leaf 1",
             parentAddr="0X0000000000000000000000000000000000000001",
             nodeType="leaf"
         )
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000004",
             "mock leaf 2",
             parentAddr="0X0000000000000000000000000000000000000001",
             nodeType="leaf"
         )
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000005",
             "mock leaf 3",
             parentAddr="0X0000000000000000000000000000000000000002",
             nodeType="leaf"
         )
-        self.nebula.addNodeToGraph(
+        await self.nebula.addNodeToGraph(
             "0X0000000000000000000000000000000000000006",
             "mock leaf 4",
             parentAddr="0X0000000000000000000000000000000000000002",
             nodeType="leaf"
         )
-
-    #################### Tests ####################
-    def test_SearchEndpoint(self):
-        # Clear test space on NebulaGraph
-        self.recreateDB()
-        # Fill test space with test data
-        self.fillDB()
-        # Switch to Nebula test space
-        heuristics.setNebulaSpace("MockSpace")
-
-        with TestClient(app) as mc:
-            # First, get leafs for first deposit address cluster
-            response = mc.get("/search", params={
-                "targetAddr": "0X0000000000000000000000000000000000000003"
-            })
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("0X0000000000000000000000000000000000000005", response.text)
-        self.assertIn("0X0000000000000000000000000000000000000004", response.text)
 # End of TestsClass class
+
+#################### Tests ####################
+@pytest.mark.asyncio
+async def test_SearchEndpoint():
+    testHelper = TestsClass()
+    # Clear test space on NebulaGraph
+    testHelper.recreateDB()
+    # Fill test space with test data
+    await testHelper.fillDB()
+    # Switch to Nebula test space
+    heuristics.setNebulaSpace("MockSpace")
+
+    with TestClient(app) as mc:
+        # First, get leafs for first deposit address cluster
+        response = mc.get("/search", params={
+            "targetAddr": "0X0000000000000000000000000000000000000003"
+        })
+
+    assert response.status_code == 200
+    assert "0X0000000000000000000000000000000000000003" in response.text
+    assert "0X0000000000000000000000000000000000000004" in response.text

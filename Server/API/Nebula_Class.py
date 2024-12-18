@@ -36,12 +36,11 @@ class NebulaAPI(BaseAPI):
     def spaceExists(self, spaceName):
         result = self.ExecNebulaCommand('SHOW SPACES')
         if not result.is_empty():
-            return spaceName in result.column_values("Name")
+            return spaceName in [val.as_string() for val in result.column_values("Name")]
         return False
 
     # Ensures all spaces are already present
     def createSpace(self, spaceName=""):
-        time.sleep(40)
         # Create new space
         if not self.spaceExists(spaceName):
             Out.warning(f"Creating new space: {spaceName}")
