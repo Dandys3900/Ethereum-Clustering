@@ -11,5 +11,7 @@ Few addresses known to produce interesting graphs:
 To build image of THIS PROJECT ONLY stuff, run:
 `docker build -t eth_server .`
 
+Before following, make sure Docker Desktop is ON and it's Nebula extension container is PAUSED.
+
 Then to build and run container with both THIS PROJECT & NebulaGraph, run:
 `docker-compose -f docker-compose.yml up --build`
