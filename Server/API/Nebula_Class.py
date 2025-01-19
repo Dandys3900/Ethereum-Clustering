@@ -20,7 +20,6 @@ class NebulaAPI(BaseAPI):
     # Init connection to Nebula instance and return pool to use
     def getNebulaPool(self):
         try:
-            # Define config
             config = Config()
             # Init connection pool
             connection_pool = ConnectionPool()

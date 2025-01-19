@@ -33,6 +33,7 @@ class BaseAPI():
             # Timeout happened 3 times in row, return None
             if retryCount == 1:
                 return None
+            Out.warning(f"Timeout for GET request, remaining tries: {(retryCount - 1)}")
             # Repeat request with decremented retryCount
             return await self.get(session, endpoint, params, (retryCount - 1))
         except Exception as e:

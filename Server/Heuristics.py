@@ -101,6 +101,8 @@ class HeuristicsClass():
 
         # Try and check if any known leaf matches this address
         if targetAddr.upper() not in self.nebula.getAddrsOfType("leaf"):
+            Out.error(f"Given (leaf) address {targetAddr} not found in any cluster")
+            # resultsList, resultsGraph
             return "", ""
 
         # Find deposit address(es) of target address

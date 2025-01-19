@@ -1,11 +1,18 @@
 # Imports
 from Server import HeuristicsClass
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
+
+# Absolute path to current file parent
+BASE_DIR = Path(__file__).resolve().parent
 
 # Init FastAPI
 app = FastAPI()
+# Serve static files
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 # Prepare template for webpage
 templates = Jinja2Templates(directory="Server/templates")
 # Create Heuristics class instance

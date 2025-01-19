@@ -14,7 +14,18 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
     <!-- GridJS -->
     <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
+    <!-- Favicon -->
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+
+    <!-- Styles -->
+    <style>
+      .btn-primary {
+        /* Official FIT-blue color */
+        background-color: #00ABE3;
+        border: none;
+      }
+    </style>
 
     <!-- JavaScript -->
     <script>
@@ -24,11 +35,8 @@
       }
 
       function showMenu() {
-        const style = document.getElementById("refreshForm").style.display;
-        if (style === "none")
-            document.getElementById("refreshForm").style.display = "block";
-        else
-            document.getElementById("refreshForm").style.display = "none";
+        const form = document.getElementById("refreshForm");
+        form.style.display = (form.style.display === "none") ? "block" : "none";
       }
 
       async function submitRefreshRequest(event) {
@@ -62,6 +70,30 @@
         link.download = filename;
         link.click();
       }
+
+      function copyDonateTextClipBoard() {
+        navigator.clipboard.writeText("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5")
+          .then(() => {
+            // Show "Address copied" when succesful
+            const infoText = document.createElement("div");
+            infoText.className = "alert alert-success";
+            infoText.style = "position: absolute; bottom: 10px; z-index: 100;";
+            infoText.innerText = "Address copied!✅";
+
+            // Append it to existing element
+            document.getElementById("donateText").appendChild(infoText);
+
+            // Remove info text after 1s
+            setTimeout(() => {
+              infoText.remove();
+            }, 1000);
+          });
+      }
+
+      function triggerAboutText() {
+        const text = document.getElementById("aboutText");
+        text.style.display = (text.style.display === "none") ? "block" : "none";
+      }
     </script>
   </head>
   <body>
@@ -70,25 +102,31 @@
         <!-- First row: Count chart + search bar + menu -->
         <div class="row">
             <!-- Clustered addresses count -->
-            <div class="col">
-                <div id="res_charts" style="display: block; height: 150px; width: 250px;"></div>
+            <div class="col position-relative">
+                <!-- Faculty logo -->
+                <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 60%; height: 20%; display: block;">
+                  <img src="/static/VUTFIT_Logo.png" class="img-fluid">
+                </div>
+
+                <div id="resCharts" style="display: block; height: 150px; width: 250px;"></div>
                 <div id="amountDiv" class="progress" style="display: none; width: 70%; margin-bottom: 1em;">
                     <div id="totalAmount" class="progress-bar" role="progressbar" aria-valuemin="0"></div>
                 </div>
             </div>
 
             <!-- Search bar -->
-            <div class="col-md-4">
+            <div class="col-md-4 d-flex flex-column align-items-center">
                 <h1 style="text-align: center; margin-top: 1em; margin-bottom: 1em;">
                     Ethereum Address Clustering
                 </h1>
 
-                <form class="d-flex" action="/search" method="get">
+                <form class="d-flex" style="width: 100%;" action="/search" method="get">
                     <input class="form-control me-2" type="search" placeholder="Enter address" aria-label="Search" name="targetAddr" required pattern="^0X[0-9A-Fa-f]{40}$">
-                    <button class="btn btn-primary" type="submit">Search</button>
+                    <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
                 </form>
 
-                <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none;"></div>
+                <!-- DB refresh spinner -->
+                <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
             </div>
 
             <!-- Menu -->
@@ -123,18 +161,40 @@
                 <div id="container" style="height: 100%;"></div>
             </div>
         </div>
+
+        <!-- Page footer: "About" widget and donate text -->
+        <div class="position-absolute bottom-0 start-0 mb-3 ms-3">
+          <div id="aboutText" class="alert alert-primary" style="width: 300px; display: none;">
+            Created as part of a bachelor thesis at Brno University of Technology by <b>Tomáš Daniel</b>.
+            Academic year 2024/25, supervised by Ing. Jan Zavřel.
+          </div>
+          <button class="btn btn-warning" onclick="triggerAboutText()">About ℹ️</button>
+        </div>
+
+        <div id="donateText" class="d-flex justify-content-center position-absolute bottom-0 end-0 mb-4 ms-3">
+          Feel free to donate: <span style="cursor: pointer;" onclick="copyDonateTextClipBoard()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
+        </div>
     </div>
 
-    <!-- List of clustered addresses -->
-    {% if resultsList %}
+    {% if resultsList == "" %}
+      <!-- Handle not found address -->
       <script type="text/javascript">
+        // Keep faculty logo shown
+        document.getElementById("facLogo").style.display = "block";
+      </script>
+    {% elif resultsList and resultsGraph %}
+      <script type="text/javascript">
+        // Hide faculty logo and show count charts instead
+        document.getElementById("facLogo").style.display = "none";
+
+        //*********** List of clustered addresses ***********//
         // Get data from Python
-        var data = {{ resultsList | safe }};
+        var listData = {{ resultsList | safe }};
 
         // Create results table
         var table = new gridjs.Grid({
           columns: ["Entity"],
-          data: data.map(value => [value]),
+          data: listData.map(value => [value]),
           pagination: {
               limit: 20
           },
@@ -146,7 +206,7 @@
         document.getElementById("exports").style.display = "flex";
 
         // Render chart for count of clustered addresses
-        var countChart = echarts.init(document.getElementById("res_charts"));
+        var countChart = echarts.init(document.getElementById("resCharts"));
         countChart.setOption({
           series: [{
             name: "Address count",
@@ -163,20 +223,16 @@
             }]
           }]
         });
-      </script>
-    {% endif %}
 
-    <!-- Render graph for results -->
-    {% if resultsGraph %}
-      <script type="text/javascript">
-        // Wrap chart crration into timeout to ensure hosting element is created before chart
+        //*********** Render graph for results ***********//
+        // Wrap chart creation into timeout to ensure hosting element is created before chart
         setTimeout(function () {
           var addrChart = echarts.init(dom=document.getElementById("container"), opts={
             renderer: "canvas"
           });
 
           // Get data from Python
-          var data = {{ resultsGraph | safe }};
+          var graphData = {{ resultsGraph | safe }};
           // Create styling for each type of no`de
           let nodeStyles = {
             "exchange": 12,
@@ -186,14 +242,14 @@
 
           let totalEtherAmount = 0;
           let graph = {
-            nodes: data.nodes.map(node => ({
+            nodes: graphData.nodes.map(node => ({
               ...node,
               symbolSize: nodeStyles[node.props.type],
               name      : node.id,
               value     : node.props,
               category  : node.props.type
             })),
-            links: data.edges.map(edge => {
+            links: graphData.edges.map(edge => {
                 // Collect sum of all transferred Ether for cluster
                 totalEtherAmount += parseFloat(edge.props.amount);
                 return {
