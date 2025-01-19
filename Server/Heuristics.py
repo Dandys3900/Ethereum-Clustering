@@ -36,9 +36,9 @@ class HeuristicsClass():
         await self.api.runParalel([
             partial(
                 self.api.nebula.addNodeToGraph,
-                dexAddr,
-                dexName,
-                nodeType="exchange"
+                addr     = dexAddr,
+                addrName = dexName,
+                nodeType = "exchange"
             ) for dexAddr, dexName in exchanges
         ])
 
@@ -51,10 +51,11 @@ class HeuristicsClass():
             await self.api.runParalel([
                 partial(
                     self.api.getLinkedAddrs,
-                    trezor_session,
-                    dexAddr,
-                    parentAddr=dexAddr,
-                    nodeType="deposit"
+                    session    = trezor_session,
+                    targetAddr = dexAddr,
+                    targetName = self.exchAddrs.get(dexAddr, ""), # Get name of (parent) exchange
+                    parentAddr = dexAddr,
+                    nodeType   = "deposit"
                 ) for dexAddr in exchAddrs
             ])
 
@@ -67,10 +68,11 @@ class HeuristicsClass():
             await self.api.runParalel([
                 partial(
                     self.api.getLinkedAddrs,
-                    trezor_session,
-                    depoAddr,
-                    parentAddr=depoAddr,
-                    nodeType="leaf"
+                    session    = trezor_session,
+                    targetAddr = depoAddr,
+                    targetName = self.exchAddrs.get(depoAddr, ""), # Get name of (parent) exchange
+                    parentAddr = depoAddr,
+                    nodeType   = "leaf"
                 ) for depoAddr in exchDepos
             ])
 
@@ -95,22 +97,22 @@ class HeuristicsClass():
 
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):
-        # Get all clustered addresses and check if target address is in any
+        targetAddr = targetAddr.upper()
         # Use defined space
         self.nebula.ExecNebulaCommand(f'USE {self.targetSpace}')
 
         # Try and check if any known leaf matches this address
-        if targetAddr.upper() not in self.nebula.getAddrsOfType("leaf"):
+        if targetAddr not in self.nebula.getAddrsOfType("leaf"):
             Out.error(f"Given (leaf) address {targetAddr} not found in any cluster")
             # resultsList, resultsGraph
-            return "", ""
+            return "None", ""
 
         # Find deposit address(es) of target address
         targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
             f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
         ), "id(deposit)")
 
-        subGraphdata = ""
+        subGraphdata    = ""
         clustrAddrsList = ""
         # Iterate over all found deposit addresses
         for depoAddr in targetAddrDepo:

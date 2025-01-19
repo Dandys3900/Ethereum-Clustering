@@ -30,27 +30,46 @@
     <!-- JavaScript -->
     <script>
       function showRangeValue(rangeElement) {
-        // Get current value of range and update label
+        // Get and update current value of range and update label
         document.getElementById("refreshLabel").innerText = "Refresh scope: " + rangeElement.value + " %";
       }
 
-      function showMenu() {
+      function triggerMenu() {
         const form = document.getElementById("refreshForm");
         form.style.display = (form.style.display === "none") ? "block" : "none";
       }
 
+      function triggerAboutText() {
+        const text = document.getElementById("aboutText");
+        text.style.display = (text.style.display === "none") ? "block" : "none";
+      }
+
       async function submitRefreshRequest(event) {
         event.preventDefault();
+        // Ensure "No address found" image is hidden
+        document.getElementById("notFoundAddr").style.display = "none";
         // Show loading bar while we wait
         document.getElementById("loadSpinner").style.display = "block";
+        // Extract current range value
+        const rangeValue = document.getElementById("refeshScope").value;
 
-        rangeValue = document.getElementById("refeshScope").value;
-        // Wait for response
-        const response = await fetch(`/refreshDB?refreshScope=${rangeValue}`, {
+        await fetch(`/refreshDB?refreshScope=${rangeValue}`, {
           method: "GET"
         });
         // Stop waiting/loading
         document.getElementById("loadSpinner").style.display = "none";
+        // Clear URL afterwards
+        window.history.replaceState({}, "", "/");
+      }
+
+      async function submitSearchForm(event) {
+        event.preventDefault();
+        // Extract given target address
+        const targetAddr = new FormData(event.target).get("targetAddr");
+
+        await fetch(`/search?targetAddr=${targetAddr}`);
+        // Clear URL afterwards
+        window.history.replaceState({}, "", "/");
       }
 
       function exportJSON() {
@@ -89,11 +108,6 @@
             }, 1000);
           });
       }
-
-      function triggerAboutText() {
-        const text = document.getElementById("aboutText");
-        text.style.display = (text.style.display === "none") ? "block" : "none";
-      }
     </script>
   </head>
   <body>
@@ -104,8 +118,10 @@
             <!-- Clustered addresses count -->
             <div class="col position-relative">
                 <!-- Faculty logo -->
-                <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 60%; height: 20%; display: block;">
-                  <img src="/static/VUTFIT_Logo.png" class="img-fluid">
+                <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+                  <a href="https://www.fit.vut.cz/.en">
+                    <img src="/static/VUTFIT_Logo.png" class="img-fluid">
+                  </a>
                 </div>
 
                 <div id="resCharts" style="display: block; height: 150px; width: 250px;"></div>
@@ -120,25 +136,30 @@
                     Ethereum Address Clustering
                 </h1>
 
-                <form class="d-flex" style="width: 100%;" action="/search" method="get">
-                    <input class="form-control me-2" type="search" placeholder="Enter address" aria-label="Search" name="targetAddr" required pattern="^0X[0-9A-Fa-f]{40}$">
+                <form id="searchForm" class="d-flex" style="width: 100%;" onsubmit="submitSearchForm(event)">
+                    <input class="form-control me-2" type="search" placeholder="Enter address" aria-label="Search" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$">
                     <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
                 </form>
 
                 <!-- DB refresh spinner -->
                 <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
+
+                <!-- Address not found -->
+                <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
+                  <img src="/static/NotFoundImg.png" class="img-fluid">
+                </div>
             </div>
 
             <!-- Menu -->
             <div class="col">
                 <div class="d-flex justify-content-end" style="margin-top: 1.5em;">
-                    <button class="btn btn-primary" onclick="showMenu()"><i class="fa fa-bars"></i> Menu</button>
+                    <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
                 </div>
 
                 <div class="d-flex justify-content-end">
                     <form id="refreshForm" onsubmit="submitRefreshRequest(event)" style="display: none; width: 200px;">
                         <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
-                        <input type="range" class="form-range" min="1" max="100" step="1" id="refeshScope" onmousemove="showRangeValue(this)">
+                        <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
                         <button class="btn btn-danger" type="submit">Refresh Database</button>
                     </form>
                 </div>
@@ -176,11 +197,13 @@
         </div>
     </div>
 
-    {% if resultsList == "" %}
+    {% if resultsList == "None" %}
       <!-- Handle not found address -->
       <script type="text/javascript">
         // Keep faculty logo shown
         document.getElementById("facLogo").style.display = "block";
+        // Show "No address found" image
+        document.getElementById("notFoundAddr").style.display = "block";
       </script>
     {% elif resultsList and resultsGraph %}
       <script type="text/javascript">
@@ -247,6 +270,7 @@
               symbolSize: nodeStyles[node.props.type],
               name      : node.id,
               value     : node.props,
+              exchname  : node.props.name,
               category  : node.props.type
             })),
             links: graphData.edges.map(edge => {
@@ -276,7 +300,9 @@
                 trigger: "item",
                 formatter: function (params) {
                     if (params.dataType === "edge")
-                        return `Ether amount: ${params.data.amount}`;
+                      return `Ether amount: ${params.data.amount}`;
+                    else // Node
+                      return `Exchange: ${params.data.exchname}`;
                 }
             },
             legend: [{
