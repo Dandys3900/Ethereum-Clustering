@@ -3,3 +3,7 @@ addresses.csv
 DEXAddr/
 virtenv/
 __pycache__
+.pytest_cache
+logs
+data
+NebulaGraph

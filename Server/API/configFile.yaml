@@ -2,6 +2,8 @@ trezor:
   url: "http://147.229.8.210:56300/api/"
   # NOTE: No authentization needed
 
+# Nebula extension: "127.0.0.1"
+# Nebula in Docker: "graphd"
 nebula:
   addr: "127.0.0.1"
   port: 9669

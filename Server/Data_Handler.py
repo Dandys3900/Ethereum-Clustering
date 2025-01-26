@@ -5,8 +5,11 @@ from functools import partial
 from Helpers import Out
 from .API import *
 
+# Const representing value of 1 Wei
+ETH_WEI = 1_000_000_000_000_000_000
+
 class ServerHandler():
-    def __init__(self, nebulaAPI):
+    def __init__(self, nebulaAPI:NebulaAPI):
         try:
             # Create API instance
             self.trezor = TrezorAPI()
@@ -17,7 +20,6 @@ class ServerHandler():
             # Exit on API error
             exit(-1)
 
-    # Setter to let class know about known exchanges
     def setExchangeAddrs(self, exchAddrs):
         # Store list of known exchanges
         self.exchAddrs = exchAddrs
@@ -32,11 +34,11 @@ class ServerHandler():
     async def getTxAddrs(self, session=None, addr="", addrName="", parentAddr="", nodeType="", page=1):
         # To ensure address consistency, capitalize them
         addr = addr.upper()
+
         apiResponse = await (self.trezor.get(session, f"v2/address/{addr}", params={
             "page"    : page,
             "details" : "txslight"
         }))
-
         # Check if valid server response
         if not apiResponse or apiResponse.get("transactions", {}) == {}:
             return
@@ -49,21 +51,21 @@ class ServerHandler():
                 txFROMAddr = str(tx.get("vin")[0].get("addresses")[0]).upper()
                 txTOAddr   = str(tx.get("vout")[0].get("addresses")[0]).upper()
                 # Convert from Wei -> Ether
-                txAmount = float(tx.get("vout")[0].get("value")) / 1_000_000_000_000_000_000
+                txAmount = float(tx.get("vout")[0].get("value")) / ETH_WEI
 
-                # Transaction contain target address and it's NOT known exchange
-                if addr in [txFROMAddr, txTOAddr]:
-                    # Determine which address record to add
-                    addrKey = (txTOAddr if addr == txFROMAddr else txFROMAddr)
-                    if addrKey in self.exchAddrs:
+                # Transaction contain target address and direction is TO target address
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                    # Avoid adding known exchange
+                    if txFROMAddr in self.exchAddrs:
                         return
+
                     # Add address to graph
-                    self.nebula.addNodeToGraph(
-                        addrKey,
-                        addrName,
-                        parentAddr,
-                        nodeType,
-                        txAmount
+                    await self.nebula.addNodeToGraph(
+                        addr       = txFROMAddr,
+                        addrName   = addrName,
+                        parentAddr = parentAddr,
+                        nodeType   = nodeType,
+                        amount     = txAmount
                     )
             except Exception as e:
                 Out.error(f"getTxAddrs() error: {e}")
@@ -74,7 +76,6 @@ class ServerHandler():
         retVal = await self.trezor.get(session, f"v2/address/{targetAddr}", params={
             "details" : "txslight"
         })
-
         # Check if valid server response
         if not retVal or not retVal.get("totalPages"):
             return
@@ -85,12 +86,12 @@ class ServerHandler():
         await self.runParalel([
             partial(
                 self.getTxAddrs,
-                session,
-                targetAddr,
-                targetName,
-                parentAddr,
-                nodeType,
-                page
+                session    = session,
+                addr       = targetAddr,
+                addrName   = targetName,
+                parentAddr = parentAddr,
+                nodeType   = nodeType,
+                page       = page
             ) for page in range(1, (totalPages + 1))
         ])
 # End of ServerHandler class

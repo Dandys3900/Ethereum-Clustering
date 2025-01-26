@@ -1,5 +1,5 @@
 # Imports
-import atexit
+import atexit, time
 from .Base_Class import BaseAPI, yaml, Out
 from nebula3.gclient.net import ConnectionPool
 from nebula3.Config import Config
@@ -20,7 +20,6 @@ class NebulaAPI(BaseAPI):
     # Init connection to Nebula instance and return pool to use
     def getNebulaPool(self):
         try:
-            # Define config
             config = Config()
             # Init connection pool
             connection_pool = ConnectionPool()
@@ -32,8 +31,45 @@ class NebulaAPI(BaseAPI):
             Out.error(f"Error while creating Nebula connection: {e}")
             exit(-1)
 
+    # Check if given Nebula object (space, index, edge) already exists
+    def objectExists(self, assertName, objName):
+        result = self.ExecNebulaCommand(f'SHOW {objName}')
+        if not result.is_empty():
+            return assertName in [val.as_string() for val in result.column_values("Name")]
+        return False
+
+    # Ensures all spaces are already present
+    def createSpace(self, spaceName=""):
+        # Create new space
+        if not self.objectExists(spaceName, "SPACES"):
+            Out.warning(f"Creating new space: {spaceName}")
+            self.ExecNebulaCommand(f'CREATE SPACE IF NOT EXISTS {spaceName} (partition_num=10, replica_factor=1, vid_type=FIXED_STRING(42))')
+            # Wait 20s to make sure space is created properly
+            time.sleep(20)
+            Out.success(f"Space {spaceName} created succesfully")
+
+        # Use defined space
+        self.ExecNebulaCommand(f'USE {spaceName}')
+
+        # Create necessary index, tags and edges
+        if not (noChangeMade := self.objectExists("address", "TAGS")):
+            Out.warning("Creating needed tag(s)")
+            self.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
+            Out.warning("Creating needed index(s)")
+            self.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
+
+        if not (noChangeMade := self.objectExists("linked_to", "EDGES")):
+            Out.warning("Creating needed edge(s)")
+            self.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0)')
+
+        # Ensure new objects are properly made
+        if not noChangeMade:
+            time.sleep(20)
+            Out.success(f"All needed components created succesfully")
+
     # Handles adding new node to graph
-    def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
+    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
+        print(f"Adding type: {nodeType} ; name: {addrName} ; {addr}")
         # Add node (vertex) to graph
         self.ExecNebulaCommand(
             f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
@@ -51,7 +87,7 @@ class NebulaAPI(BaseAPI):
         resp = self.session.execute(command)
         # Check for execution errors
         assert resp.is_succeeded(), resp.error_msg()
-        # Return result (for compatibility reasons)
+        # Return result (required in some use-cases)
         return resp
 
     def toArrayTransform(self, result, pivot):
@@ -60,11 +96,11 @@ class NebulaAPI(BaseAPI):
         # Create list and return it
         return [val.as_string() for val in result.column_values(pivot)]
 
-    def getAddrsOfType(self, addrType=""):
+    def getAddrsOfType(self, addrType="", targetParam="id(v)"):
         # Make query to get all addresses of given type
         result = self.ExecNebulaCommand(
-            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN id(v)'
+            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN {targetParam}'
         )
         # Handle result
-        return self.toArrayTransform(result, "id(v)")
+        return self.toArrayTransform(result, targetParam)
 # NebulaAPI class end
