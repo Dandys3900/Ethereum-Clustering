@@ -65,11 +65,11 @@ class NebulaAPI(BaseAPI):
         # Ensure new objects are properly made
         if not noChangeMade:
             time.sleep(20)
-            Out.success(f"Tags and index created succesfully")
+            Out.success(f"All needed components created succesfully")
 
     # Handles adding new node to graph
     async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
-        print(f"Adding {addr}")
+        print(f"Adding type: {nodeType} ; name: {addrName} ; {addr}")
         # Add node (vertex) to graph
         self.ExecNebulaCommand(
             f'INSERT VERTEX IF NOT EXISTS address(name, type) VALUES "{addr}": ("{addrName}", "{nodeType}")'
@@ -87,7 +87,7 @@ class NebulaAPI(BaseAPI):
         resp = self.session.execute(command)
         # Check for execution errors
         assert resp.is_succeeded(), resp.error_msg()
-        # Return result (for compatibility reasons)
+        # Return result (required in some use-cases)
         return resp
 
     def toArrayTransform(self, result, pivot):
@@ -96,11 +96,11 @@ class NebulaAPI(BaseAPI):
         # Create list and return it
         return [val.as_string() for val in result.column_values(pivot)]
 
-    def getAddrsOfType(self, addrType=""):
+    def getAddrsOfType(self, addrType="", targetParam="id(v)"):
         # Make query to get all addresses of given type
         result = self.ExecNebulaCommand(
-            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN id(v)'
+            f'MATCH (v:address) WHERE v.address.type == "{addrType}" RETURN {targetParam}'
         )
         # Handle result
-        return self.toArrayTransform(result, "id(v)")
+        return self.toArrayTransform(result, targetParam)
 # NebulaAPI class end

@@ -20,7 +20,6 @@ class ServerHandler():
             # Exit on API error
             exit(-1)
 
-    # Setter to let class know about known exchanges
     def setExchangeAddrs(self, exchAddrs):
         # Store list of known exchanges
         self.exchAddrs = exchAddrs
@@ -54,15 +53,15 @@ class ServerHandler():
                 # Convert from Wei -> Ether
                 txAmount = float(tx.get("vout")[0].get("value")) / ETH_WEI
 
-                # Transaction contain target address and it's NOT known exchange
-                if addr in [txFROMAddr, txTOAddr]:
-                    # Determine which address record to add
-                    addrKey = (txTOAddr if addr == txFROMAddr else txFROMAddr)
-                    if addrKey in self.exchAddrs:
+                # Transaction contain target address and direction is TO target address
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                    # Avoid adding known exchange
+                    if txFROMAddr in self.exchAddrs:
                         return
+
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
-                        addr       = addrKey,
+                        addr       = txFROMAddr,
                         addrName   = addrName,
                         parentAddr = parentAddr,
                         nodeType   = nodeType,

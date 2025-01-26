@@ -15,10 +15,6 @@ class HeuristicsClass():
         self.nebula = NebulaAPI()
         # Init ServerData_Handler for communicating with blockchain client
         self.api = ServerHandler(self.nebula)
-        # Provide known exchange addresses
-        self.api.setExchangeAddrs(
-            [addr[0] for addr in self.exchAddrs.items()]
-        )
         # Set default (production) Nebula space
         self.targetSpace = "EthereumClustering"
         # Make sure space is created
@@ -45,6 +41,9 @@ class HeuristicsClass():
     async def addDepositAddrs(self):
         # Get all found deposit addresses
         exchAddrs = self.nebula.getAddrsOfType("exchange")
+        # Store all known exchanges to exclude them as deposit addresses
+        self.api.setExchangeAddrs(exchAddrs)
+
         # Create session for async requests
         async with ClientSession() as trezor_session:
             # Add all addresses interacting with known exchanges -> deposit addresses
@@ -62,18 +61,21 @@ class HeuristicsClass():
     async def addClusteredAddrs(self):
         # Get all found deposit addresses
         exchDepos = self.nebula.getAddrsOfType("deposit")
+        # Store (parent) names of deposit addresses
+        deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
+
         # Create session for async requests
         async with ClientSession() as trezor_session:
-            # Add all addresses interacting with known exchanges -> deposit addresses
+            # Add all addresses interacting with deposit addresss -> leaf addresses
             await self.api.runParalel([
                 partial(
                     self.api.getLinkedAddrs,
                     session    = trezor_session,
                     targetAddr = depoAddr,
-                    targetName = self.exchAddrs.get(depoAddr, ""), # Get name of (parent) exchange
+                    targetName = deposNames[index], # Get name of (parent) exchange
                     parentAddr = depoAddr,
                     nodeType   = "leaf"
-                ) for depoAddr in exchDepos
+                ) for index, depoAddr in enumerate(exchDepos)
             ])
 
     # Performs update of addresses connected to known exchanges
@@ -105,7 +107,7 @@ class HeuristicsClass():
         if targetAddr not in self.nebula.getAddrsOfType("leaf"):
             Out.error(f"Given (leaf) address {targetAddr} not found in any cluster")
             # resultsList, resultsGraph
-            return "None", ""
+            return "", ""
 
         # Find deposit address(es) of target address
         targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
