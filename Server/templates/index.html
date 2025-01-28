@@ -102,6 +102,30 @@
   <body>
     <!-- Main web-page content container -->
     <div class="container-fluid d-flex flex-column min-vh-100">
+        <!-- Confirmation dialog -->
+        <div class="modal fade" id="confirmRefresh" role="dialog">
+            <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Confirm database refresh</h5>
+                    <!-- Close dialog button -->
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    Performing database update will erase all currently stored values and will trigger re-clustering.
+                    This action can take hours depending on selected scope.
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Abort</button>
+                    <button type="button" class="btn btn-primary" onclick="submitRefreshRequest(event)">Proceed</button>
+                </div>
+            </div>
+            </div>
+        </div>
         <!-- First row: Count chart + search bar + menu -->
         <div class="row">
             <!-- Clustered addresses count -->
@@ -118,14 +142,14 @@
                   <div class="card">
                     <div class="card-body d-flex">
                       <i class="bi bi-bounding-box-circles"></i>
-                      <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster </h6>
+                      <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster: </h6>
                     </div>
                   </div>
                   <!-- Amount of Ether used by cluster -->
                   <div class="card">
                     <div class="card-body d-flex">
                       <i class="bi bi-bank"></i>
-                      <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster </h6>
+                      <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster: </h6>
                     </div>
                   </div>
                 </div>
@@ -158,11 +182,11 @@
                 </div>
 
                 <div class="d-flex justify-content-end">
-                    <form id="refreshForm" onsubmit="submitRefreshRequest(event)" style="display: none; width: 200px;">
+                    <div id="refreshForm" style="display: none; width: 200px;">
                         <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
                         <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
-                        <button class="btn btn-danger" type="submit">Refresh Database</button>
-                    </form>
+                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#confirmRefresh">Refresh Database</button>
+                    </div>
                 </div>
             </div>
         </div>
