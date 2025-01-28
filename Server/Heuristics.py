@@ -83,7 +83,7 @@ class HeuristicsClass():
     async def updateAddrsDB(self, scope=100):
         Out.warning(f"Beginning refresh of DB with scope: {scope}")
         # Clear existing data
-        #self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
+        self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Use defined space
         self.nebula.ExecNebulaCommand('USE EthereumClustering')

@@ -32,7 +32,6 @@
     <!-- JavaScript -->
     <script>
       function showRangeValue(rangeElement) {
-        // Get and update current value of range and update label
         document.getElementById("refreshLabel").innerText = "Refresh scope: " + rangeElement.value + " %";
       }
 
@@ -65,12 +64,12 @@
       }
 
       function exportJSON() {
-        const json = JSON.stringify(data.map(row => row), null, 2);
+        const json = JSON.stringify(listData.map(row => row), null, 2);
         downloadFile("data.json", json);
       }
 
       function exportCSV() {
-        const csv = data.map(row => row).join(",\n");
+        const csv = listData.map(row => row).join(",\n");
         downloadFile("data.csv", csv);
       }
 
@@ -97,115 +96,129 @@
             }, 1000);
           });
       }
+
+      function triggerLeftRow() {
+        // Change visibility of table in left row
+        const table = document.getElementById("data_table");
+        table.style.display = (table.style.display === "none") ? "block" : "none";
+
+        // Update icon to offer hide/show
+        const icon = document.getElementById("showHideLeftRow");
+        icon.classList.toggle("bi-arrow-bar-left");
+        icon.classList.toggle("bi-arrow-bar-right");
+      }
     </script>
   </head>
   <body>
     <!-- Main web-page content container -->
     <div class="container-fluid d-flex flex-column min-vh-100">
-        <!-- Confirmation dialog -->
-        <div class="modal fade" id="confirmRefresh" role="dialog">
-            <div class="modal-dialog" role="document">
-            <div class="modal-content">
+        <!-- First row: Count chart + search bar + menu -->
+        <div class="row">
+          <!-- Clustered addresses count -->
+          <div class="col position-relative">
+            <!-- Faculty logo -->
+            <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+              <a href="https://www.fit.vut.cz/.en">
+                <img src="/static/VUTFIT_Logo.png" class="img-fluid">
+              </a>
+            </div>
+
+            <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
+              <!-- Count of clustered addresses -->
+              <div class="card">
+                <div class="card-body d-flex">
+                  <i class="bi bi-bounding-box-circles"></i>
+                  <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster: </h6>
+                </div>
+              </div>
+
+              <!-- Amount of Ether used by cluster -->
+              <div class="card">
+                <div class="card-body d-flex">
+                  <i class="bi bi-bank"></i>
+                  <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster: </h6>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search bar -->
+          <div class="col-md-4 d-flex flex-column align-items-center">
+            <h1 style="text-align: center; margin-top: 1em; margin-bottom: 1em;">
+              Ethereum Address Clustering
+            </h1>
+
+            <form id="searchForm" class="d-flex" style="width: 100%;" action="/search" method="get">
+              <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000">
+              <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
+            </form>
+
+            <!-- DB refresh spinner -->
+            <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
+
+            <!-- Address not found -->
+            <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
+              <img src="/static/NotFoundImg.png" class="img-fluid">
+            </div>
+          </div>
+
+          <!-- Menu -->
+          <div class="col">
+            <div class="d-flex justify-content-end" style="margin-top: 1.5em;">
+              <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
+            </div>
+
+            <div class="d-flex justify-content-end">
+              <div id="refreshForm" style="display: none; width: 200px;">
+                <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
+                <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh Database</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Confirmation dialog for DB refresh -->
+          <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Confirm database refresh</h5>
-                    <!-- Close dialog button -->
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                  <h5 class="modal-title">Confirm Database Refresh</h5>
                 </div>
 
                 <div class="modal-body">
-                    Performing database update will erase all currently stored values and will trigger re-clustering.
-                    This action can take hours depending on selected scope.
+                  Performing database update will erase all currently stored values and will trigger re-clustering.
+                  This action can take hours depending on selected scope.
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">Abort</button>
-                    <button type="button" class="btn btn-primary" onclick="submitRefreshRequest(event)">Proceed</button>
+                  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
+                  <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)">Proceed</button>
                 </div>
+              </div>
             </div>
-            </div>
-        </div>
-        <!-- First row: Count chart + search bar + menu -->
-        <div class="row">
-            <!-- Clustered addresses count -->
-            <div class="col position-relative">
-                <!-- Faculty logo -->
-                <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
-                  <a href="https://www.fit.vut.cz/.en">
-                    <img src="/static/VUTFIT_Logo.png" class="img-fluid">
-                  </a>
-                </div>
-
-                <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
-                  <!-- Count of clustered addresses -->
-                  <div class="card">
-                    <div class="card-body d-flex">
-                      <i class="bi bi-bounding-box-circles"></i>
-                      <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster: </h6>
-                    </div>
-                  </div>
-                  <!-- Amount of Ether used by cluster -->
-                  <div class="card">
-                    <div class="card-body d-flex">
-                      <i class="bi bi-bank"></i>
-                      <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster: </h6>
-                    </div>
-                  </div>
-                </div>
-            </div>
-
-            <!-- Search bar -->
-            <div class="col-md-4 d-flex flex-column align-items-center">
-                <h1 style="text-align: center; margin-top: 1em; margin-bottom: 1em;">
-                    Ethereum Address Clustering
-                </h1>
-
-                <form id="searchForm" class="d-flex" style="width: 100%;" action="/search" method="get">
-                    <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" aria-label="Search" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$">
-                    <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
-                </form>
-
-                <!-- DB refresh spinner -->
-                <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
-
-                <!-- Address not found -->
-                <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
-                  <img src="/static/NotFoundImg.png" class="img-fluid">
-                </div>
-            </div>
-
-            <!-- Menu -->
-            <div class="col">
-                <div class="d-flex justify-content-end" style="margin-top: 1.5em;">
-                    <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
-                </div>
-
-                <div class="d-flex justify-content-end">
-                    <div id="refreshForm" style="display: none; width: 200px;">
-                        <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
-                        <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
-                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#confirmRefresh">Refresh Database</button>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
 
         <!-- Second row: Results table + graph -->
         <div class="row flex-grow-1">
-            <!-- Results table -->
-            <div class="col-md-3">
-                <div id="exports" style="display: none; gap: 5px;">
-                    <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
-                    <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
-                </div>
-                <div id="data_table"></div>
+          <!-- Results table -->
+          <div class="col-md-3">
+            <div id="exports" style="display: none; gap: 5px;">
+              <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
+              <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
 
-            <!-- Results graph -->
-            <div class="col" style="padding-right: 10px;">
-                <div id="container" style="height: 100%;"></div>
-            </div>
+            <button class="btn btn-warning" onclick="triggerLeftRow()">
+              <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+            </button>
+
+            <div id="data_table"></div>
+          </div>
+
+          <!-- Results graph -->
+          <div class="col" style="padding-right: 10px; padding-top: 10px;">
+            <div id="container" style="height: 100%; border-color: #00ABE3; /*FIT color*/" class="border"></div>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -236,6 +249,7 @@
                 <a href="https://www.linkedin.com/in/tom%C3%A1%C5%A1-daniel-b71724197/">
                   <i class="bi bi-linkedin fs-4"></i>
                 </a>
+
                 <a href="https://github.com/Dandys3900">
                   <i class="bi bi-github fs-4"></i>
                 </a>
@@ -337,6 +351,8 @@
             legend: [{
               data: ["exchange", "deposit", "leaf"]
             }],
+            animationDuration: 1500,
+            animationEasingUpdate: "quinticInOut",
             series: [{
               type      : "graph",
               layout    : "force",
@@ -354,6 +370,12 @@
               },
               lineStyle: {
                 color: "source"
+              },
+              emphasis: {
+                focus: "adjacency",
+                lineStyle: {
+                  width: 10
+                }
               }
             }]
           });
