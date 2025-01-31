@@ -1,6 +1,6 @@
 # Imports
 from Server import HeuristicsClass
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -27,10 +27,10 @@ async def showHome(request: Request):
     )
 
 # Refresh database
-@app.get("/refreshDB", response_class=HTMLResponse)
-async def refreshDB(request: Request, refreshScope: int):
+@app.post("/refreshDB", response_class=HTMLResponse)
+async def refreshDB(request: Request, scope: int = Form(...)):
     # Trigger refresh with given scope
-    await heuristics.updateAddrsDB(scope=refreshScope)
+    await heuristics.updateAddrsDB(scope=scope)
     # Render page
     return templates.TemplateResponse(
         request=request,
@@ -38,8 +38,8 @@ async def refreshDB(request: Request, refreshScope: int):
     )
 
 # Init search
-@app.get("/search", response_class=HTMLResponse)
-async def searchAddr(request: Request, targetAddr: str):
+@app.post("/search", response_class=HTMLResponse)
+async def searchAddr(request: Request, targetAddr: str = Form(...)):
     # Collect addresses
     resultsList, resultsGraph = await heuristics.clusterAddrs(targetAddr=targetAddr)
     # Render page
@@ -47,6 +47,7 @@ async def searchAddr(request: Request, targetAddr: str):
         request=request,
         name="index.html",
         context={
+            "targetAddr"   : targetAddr,
             "resultsList"  : resultsList,
             "resultsGraph" : resultsGraph
         }

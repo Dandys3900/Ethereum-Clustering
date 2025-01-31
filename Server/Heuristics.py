@@ -61,6 +61,8 @@ class HeuristicsClass():
     async def addClusteredAddrs(self):
         # Get all found deposit addresses
         exchDepos = self.nebula.getAddrsOfType("deposit")
+        # Store all known deposits to exclude them as leaf addresses
+        self.api.setDepositAddrs(exchDepos)
         # Store (parent) names of deposit addresses
         deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
 

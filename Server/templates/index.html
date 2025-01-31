@@ -53,9 +53,13 @@
         document.getElementById("loadSpinner").style.display = "block";
         // Extract current range value
         const rangeValue = document.getElementById("refeshScope").value;
+        // Create form and append extracted value to it
+        const formData = new FormData();
+        formData.append("scope", rangeValue);
 
-        await fetch(`/refreshDB?refreshScope=${rangeValue}`, {
-          method: "GET"
+        await fetch("/refreshDB", {
+          method: "POST",
+          body  : formData
         });
         // Stop waiting/loading
         document.getElementById("loadSpinner").style.display = "none";
@@ -97,15 +101,22 @@
           });
       }
 
-      function triggerLeftRow() {
-        // Change visibility of table in left row
-        const table = document.getElementById("data_table");
-        table.style.display = (table.style.display === "none") ? "block" : "none";
+      function triggerLeftRow(whichBtn) {
+        // Change visibility of outter trigger button
+        const btn = document.getElementById("outterBtn");
+        btn.style.display = (whichBtn === "innerBtn") ? "block" : "none";
+
+        // Change visibility of left column
+        const col = document.getElementById("results");
+        col.style.display = (col.style.display === "none") ? "block" : "none";
 
         // Update icon to offer hide/show
         const icon = document.getElementById("showHideLeftRow");
         icon.classList.toggle("bi-arrow-bar-left");
         icon.classList.toggle("bi-arrow-bar-right");
+
+        // Ensure resize of chart
+        addrChart.resize();
       }
     </script>
   </head>
@@ -148,8 +159,8 @@
               Ethereum Address Clustering
             </h1>
 
-            <form id="searchForm" class="d-flex" style="width: 100%;" action="/search" method="get">
-              <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000">
+            <form id="searchForm" class="d-flex" style="width: 100%;" action="/search" method="post">
+              <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000" value="{{ targetAddr }}">
               <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
             </form>
 
@@ -164,7 +175,7 @@
 
           <!-- Menu -->
           <div class="col">
-            <div class="d-flex justify-content-end" style="margin-top: 1.5em;">
+            <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
               <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
             </div>
 
@@ -201,23 +212,49 @@
 
         <!-- Second row: Results table + graph -->
         <div class="row flex-grow-1">
+          <button id="outterBtn" class="btn btn-warning" style="display: none; width: fit-content; height: fit-content;" onclick="triggerLeftRow('outterBtn')">
+            <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+          </button>
+
           <!-- Results table -->
-          <div class="col-md-3">
-            <div id="exports" style="display: none; gap: 5px;">
+          <div id="results" class="col-md-3" style="display: none;">
+            <div id="exportsBtns" class="gap-3" style="display: block;">
+              <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
+                <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+              </button>
               <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
               <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
-
-            <button class="btn btn-warning" onclick="triggerLeftRow()">
-              <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
-            </button>
 
             <div id="data_table"></div>
           </div>
 
           <!-- Results graph -->
-          <div class="col" style="padding-right: 10px; padding-top: 10px;">
-            <div id="container" style="height: 100%; border-color: #00ABE3; /*FIT color*/" class="border"></div>
+          <div class="col-md" style="padding-right: 10px; padding-top: 10px;">
+            <div id="container" style="height: 100%;">
+              <div id="howItWorksText" class="row d-flex" style="display: block; margin-top: 5%;">
+                <div class="col"></div>
+                <!-- Text explaining basics of used heuristics -->
+                <div class="col-md-4">
+                  <h3><i class="bi bi-person-raised-hand"></i> How this clustering actually works?</h3>
+                  <hr>
+                  Clustering heuristics used by this application is based on following principle.
+                  Whenever exchange user wants to deposit his/her funds, exchange provides user-specific address
+                  where to send these funds, called <b>deposit address</b>. This address must be used
+                  consistently only for the same user, otherwise it would lead to false positives clusters. Now,
+                  whenever multiple addresses send their funds to the same deposit address, it's very likely
+                  these addresses are controlled by the same entity, how else they would know this deposit address, right?
+                  By making these assumptions, we cluster all these addresses based on used deposit address.
+                  Try by Yourself!
+                </div>
+
+                <!-- Explanatory image -->
+                <div class="col-md-4" style="margin-top: 10%;">
+                  <img src="/static/DBScheme.png" class="img-fluid rounded">
+                </div>
+                <div class="col"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -269,8 +306,9 @@
       </script>
     {% elif resultsList and resultsGraph %}
       <script type="text/javascript">
-        // Hide faculty logo and show count charts instead
+        // Hide faculty logo and explanatory text about used heuristics
         document.getElementById("facLogo").style.display = "none";
+        document.getElementById("howItWorksText").style.display = "none";
 
         //*********** List of clustered addresses ***********//
         // Get data from Python
@@ -286,9 +324,6 @@
           resizable: true,
           search   : true
         }).render(document.getElementById("data_table"));
-
-        // Show export buttons
-        document.getElementById("exports").style.display = "flex";
 
         //*********** Render graph for results ***********//
         // Get data from Python
@@ -326,15 +361,21 @@
           })
         };
 
+        // Show toggle button
+        document.getElementById("outterBtn").style.display = "block";
         // Display and fill result's charts
         document.getElementById("addrCount").innerText += table.config.data.length;
         document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
         document.getElementById("resCharts").style.display = "block";
 
+        var addrChart;
         // Wrap chart creation into timeout to ensure hosting element is created before chart
         setTimeout(function () {
+          const canvas = document.getElementById("container");
+          // Show canvas borders by adding 'card' class
+          canvas.classList.add("card");
           // Render nodes graph
-          var addrChart = echarts.init(dom=document.getElementById("container"), opts={
+          addrChart = echarts.init(dom=canvas, opts={
             renderer: "canvas"
           });
 
@@ -351,8 +392,6 @@
             legend: [{
               data: ["exchange", "deposit", "leaf"]
             }],
-            animationDuration: 1500,
-            animationEasingUpdate: "quinticInOut",
             series: [{
               type      : "graph",
               layout    : "force",

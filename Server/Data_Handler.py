@@ -15,6 +15,9 @@ class ServerHandler():
             self.trezor = TrezorAPI()
             # Store Nebula class instance
             self.nebula = nebulaAPI
+            # Init addrs lists
+            self.exchAddrs = []
+            self.depoAddrs = []
         except Exception as e:
             Out.error(e)
             # Exit on API error
@@ -23,6 +26,10 @@ class ServerHandler():
     def setExchangeAddrs(self, exchAddrs):
         # Store list of known exchanges
         self.exchAddrs = exchAddrs
+
+    def setDepositAddrs(self, depoAddrs):
+        # Store list of known deposits
+        self.depoAddrs = depoAddrs
 
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
@@ -55,8 +62,8 @@ class ServerHandler():
 
                 # Transaction contain target address and direction is TO target address
                 if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
-                    # Avoid adding known exchange
-                    if txFROMAddr in self.exchAddrs:
+                    # Avoid adding known exchange or deposit
+                    if txFROMAddr in self.exchAddrs or txFROMAddr in self.depoAddrs:
                         return
 
                     # Add address to graph
