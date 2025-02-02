@@ -6,6 +6,7 @@ In home directory of project, run:
 Few addresses known to produce interesting graphs:
 - 0X0BE73D80023FB06C25DD7EA2CE86AE8653443739
 - 0X0206FBE501E2D89D858C13FE8117CB2F93CD9348
+- 0X001E4051B0B07BBE8F77D5C51D71EC1DB2DCF38B
 
 ## Docker
 To build image of THIS PROJECT ONLY stuff, run:

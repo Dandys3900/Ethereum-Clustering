@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
+from .API import TrezorAPI
 
 # Absolute path to current file parent
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,13 +18,18 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory="Server/templates")
 # Create Heuristics class instance
 heuristics = HeuristicsClass()
+# Create Trezor class instance
+trezor = TrezorAPI()
 
 # Home page
 @app.get("/", response_class=HTMLResponse)
 async def showHome(request: Request):
     return templates.TemplateResponse(
         request=request,
-        name="index.html"
+        name   ="index.html",
+        context={
+            "syncDate" : await trezor.getCurrentSyncDate()
+        }
     )
 
 # Refresh database
@@ -34,7 +40,10 @@ async def refreshDB(request: Request, scope: int = Form(...)):
     # Render page
     return templates.TemplateResponse(
         request=request,
-        name="index.html"
+        name   ="index.html",
+        context={
+            "syncDate" : await trezor.getCurrentSyncDate()
+        }
     )
 
 # Init search
@@ -45,10 +54,11 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
     # Render page
     return templates.TemplateResponse(
         request=request,
-        name="index.html",
+        name   ="index.html",
         context={
             "targetAddr"   : targetAddr,
             "resultsList"  : resultsList,
-            "resultsGraph" : resultsGraph
+            "resultsGraph" : resultsGraph,
+            "syncDate"     : await trezor.getCurrentSyncDate()
         }
     )
