@@ -22,10 +22,25 @@
 
     <!-- Styles -->
     <style>
-      .btn-primary {
+      :root {
         /* Official FIT-blue color */
-        background-color: #00ABE3;
+        --FITblue: #00ABE3;
+      }
+
+      .btn-primary {
+        background-color: var(--FITblue);
         border: none;
+      }
+
+      /* Change border and cursor when hovering over table's row */
+      .gridjs-table tbody tr:hover {
+        border: 2px solid var(--FITblue);
+        cursor: pointer;
+      }
+
+      /* Style for selected table row */
+      .selected-row {
+        border: 2px solid var(--FITblue);
       }
     </style>
 
@@ -231,7 +246,7 @@
               <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
 
-            <div id="data_table"></div>
+            <div style="width: fit-content;" id="data_table"></div>
           </div>
 
           <!-- Results graph -->
@@ -244,7 +259,7 @@
                   <h3><i class="bi bi-person-raised-hand"></i> How this clustering actually works?</h3>
                   <hr>
                   Clustering heuristics used by this application is based on following principle.
-                  Whenever exchange user wants to deposit his/her funds, exchange provides user-specific address
+                  Whenever exchange user wants to deposit funds, exchange provides user-specific address
                   where to send these funds, called <b>deposit address</b>. This address must be used
                   consistently only for the same user, otherwise it would lead to false positives clusters. Now,
                   whenever multiple addresses send their funds to the same deposit address, it's very likely
@@ -318,6 +333,8 @@
         //*********** List of clustered addresses ***********//
         // Get data from Python
         var listData = {{ resultsList | safe }};
+        // List of selected addresses in graph
+        const selectedNodes = new Set();
 
         // Create results table
         var table = new gridjs.Grid({
@@ -328,28 +345,65 @@
           },
           resizable: true,
           search   : true
-        }).render(document.getElementById("data_table"));
+        }).render(document.getElementById("data_table"))
+          .on("rowClick", (record) => {
+            // Extract selected address
+            const entity = record.srcElement.innerText;
+            // Toggle node out/in selected ones
+            if (selectedNodes.has(entity)) {
+              selectedNodes.delete(entity);
+              record.target.closest("tr").classList.remove("selected-row");
+            }
+            else {
+              selectedNodes.add(entity);
+              record.target.closest("tr").classList.add("selected-row");
+            }
+
+            // Update graph nodes, add focus to selected address
+            graph.nodes = graph.nodes.map(node => {
+              // Check if selected node is current one
+              const match = selectedNodes.has(node.id);
+
+              return {
+                ...node,
+                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
+                category  : ((match) ? "selected" : node.props.type)
+              };
+            });
+
+            // Propagate change to graph
+            addrChart.setOption({
+              series: [{
+                data: graph.nodes
+              }]
+            });
+          });
 
         //*********** Render graph for results ***********//
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
-        // Create styling for each type of no`de
+        // Create styling for each type of node
         let nodeStyles = {
           "exchange": 12,
           "deposit" : 10,
           "leaf"    : 8
         };
 
+        const nodeTypes = ["exchange", "deposit", "leaf", "selected"];
         let totalEtherAmount = 0.0;
         let graph = {
-          nodes: graphData.nodes.map(node => ({
-            ...node,
-            symbolSize: nodeStyles[node.props.type],
-            name      : node.id,
-            value     : node.props,
-            exchname  : node.props.name,
-            category  : node.props.type
-          })),
+          nodes: graphData.nodes.map(node => {
+            // Check if processed node is target one (from user)
+            const match = (node.id == {{ targetAddr }});
+
+            return {
+              ...node,
+              nodename  : node.id,
+              exchname  : node.props.name,
+              symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
+              category  : ((match) ? "selected" : node.props.type)
+            };
+          }),
           links: graphData.edges.map(edge => {
               // Collect sum of all transferred Ether for cluster
               totalEtherAmount += parseFloat(edge.props.amount);
@@ -359,7 +413,7 @@
                   amount: edge.props.amount
               };
           }),
-          categories: ["exchange", "deposit", "leaf"].map(function (category) {
+          categories: nodeTypes.map(function (category) {
             return {
               name: category
             };
@@ -391,11 +445,11 @@
                     if (params.dataType === "edge")
                       return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
                     else // Node
-                      return `${params.data.name}\nSource name: ${params.data.exchname}`;
+                      return `${params.data.nodename} | Source name: ${params.data.exchname}`;
                 }
             },
             legend: [{
-              data: ["exchange", "deposit", "leaf"]
+              data: nodeTypes
             }],
             series: [{
               type      : "graph",
@@ -404,9 +458,6 @@
               links     : graph.links,
               categories: graph.categories,
               roam      : true,
-              label: {
-                position: "right"
-              },
               force: {
                 repulsion: 0,
                 friction : 0,

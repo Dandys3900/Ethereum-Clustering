@@ -113,7 +113,7 @@ class HeuristicsClass():
 
         # Find deposit address(es) of target address
         targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-            f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
+            f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
         ), "id(deposit)")
 
         subGraphdata    = ""

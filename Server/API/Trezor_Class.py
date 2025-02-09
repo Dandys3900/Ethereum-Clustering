@@ -20,6 +20,6 @@ class TrezorAPI(BaseAPI):
             if not response or (response := response.get("blockbook", {})) == {}:
                 return ""
 
-            return (f"{response.get("bestHeight", "")};
+            return (f"{response.get("bestHeight", "")};\
                       {parser.isoparse(response.get("lastBlockTime", "")).strftime("%Y-%m-%d, %H:%M")}")
 # TrezorAPI class end
