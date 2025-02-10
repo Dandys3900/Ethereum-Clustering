@@ -47,7 +47,8 @@
     <!-- JavaScript -->
     <script>
       function showRangeValue(rangeElement) {
-        document.getElementById("refreshLabel").innerText = "Refresh scope: " + rangeElement.value + " %";
+        document.getElementById("refreshLabel").innerText = rangeElement.value + " %";
+        document.getElementById("exchLenLabel").innerText = Math.floor({{ exchLen }} * (rangeElement.value / 100));
       }
 
       function triggerMenu() {
@@ -201,7 +202,9 @@
                 <div><b>Latest sync time: </b>{{ values[1] }}</div>
                 <hr>
 
-                <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
+                <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
+                {% set defCount = (exchLen / 2) | int %}
+                <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
                 <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh Database</button>
               </div>

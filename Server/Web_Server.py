@@ -26,9 +26,10 @@ trezor = TrezorAPI()
 async def showHome(request: Request):
     return templates.TemplateResponse(
         request=request,
-        name   ="index.html",
-        context={
-            "syncDate" : await trezor.getCurrentSyncDate()
+        name    = "index.html",
+        context = {
+            "syncDate" : await trezor.getCurrentSyncDate(),
+            "exchLen"  : heuristics.getExchangeCount()
         }
     )
 
@@ -40,9 +41,10 @@ async def refreshDB(request: Request, scope: int = Form(...)):
     # Render page
     return templates.TemplateResponse(
         request=request,
-        name   ="index.html",
-        context={
-            "syncDate" : await trezor.getCurrentSyncDate()
+        name    = "index.html",
+        context = {
+            "syncDate" : await trezor.getCurrentSyncDate(),
+            "exchLen"  : heuristics.getExchangeCount()
         }
     )
 
@@ -54,11 +56,12 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
     # Render page
     return templates.TemplateResponse(
         request=request,
-        name   ="index.html",
-        context={
+        name    = "index.html",
+        context = {
             "targetAddr"   : targetAddr,
             "resultsList"  : resultsList,
             "resultsGraph" : resultsGraph,
-            "syncDate"     : await trezor.getCurrentSyncDate()
+            "syncDate"     : await trezor.getCurrentSyncDate(),
+            "exchLen"      : heuristics.getExchangeCount()
         }
     )

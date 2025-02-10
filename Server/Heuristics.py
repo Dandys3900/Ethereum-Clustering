@@ -20,6 +20,9 @@ class HeuristicsClass():
         # Make sure space is created
         self.nebula.createSpace(self.targetSpace)
 
+    def getExchangeCount(self):
+        return len(self.exchAddrs)
+
     # Setter for Nebula space (used by unitests)
     def setNebulaSpace(self, newSpace=""):
         self.targetSpace = newSpace
