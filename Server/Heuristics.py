@@ -28,9 +28,9 @@ class HeuristicsClass():
         self.targetSpace = newSpace
 
     async def addExchanges(self, scope):
-        exchanges = list(self.exchAddrs.items())
-        # Limit amount of processed addrs by given scope
-        exchanges = exchanges[:int(len(exchanges) * (scope / 100))]
+        # Limit amount of processed exchange addrs by given scope
+        exchAddrs = list(self.exchAddrs.items())[:int(self.getExchangeCount() * (scope / 100))]
+
         # Add all exchanges to graph
         await self.api.runParalel([
             partial(
@@ -38,14 +38,12 @@ class HeuristicsClass():
                 addr     = dexAddr,
                 addrName = dexName,
                 nodeType = "exchange"
-            ) for dexAddr, dexName in exchanges
+            ) for dexAddr, dexName in exchAddrs
         ])
 
     async def addDepositAddrs(self):
         # Get all found deposit addresses
         exchAddrs = self.nebula.getAddrsOfType("exchange")
-        # Store all known exchanges to exclude them as deposit addresses
-        self.api.setExchangeAddrs(exchAddrs)
 
         # Create session for async requests
         async with ClientSession() as trezor_session:
@@ -64,8 +62,6 @@ class HeuristicsClass():
     async def addClusteredAddrs(self):
         # Get all found deposit addresses
         exchDepos = self.nebula.getAddrsOfType("deposit")
-        # Store all known deposits to exclude them as leaf addresses
-        self.api.setDepositAddrs(exchDepos)
         # Store (parent) names of deposit addresses
         deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
 

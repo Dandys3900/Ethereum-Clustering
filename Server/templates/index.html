@@ -231,6 +231,19 @@
               </div>
             </div>
           </div>
+
+          <!-- Dialog showing transactions for given edge -->
+          <div class="modal fade" id="edgeTxs" role="dialog" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" style="max-width: 70%; margin: auto;">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Edge's Transactions</h5>
+                </div>
+
+                <div id="edgeTxsBody" class="modal-body"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Second row: Results table + graph -->
@@ -249,7 +262,7 @@
               <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
 
-            <div style="width: fit-content;" id="data_table"></div>
+            <div style="width: fit-content;" id="dataTable"></div>
           </div>
 
           <!-- Results graph -->
@@ -344,11 +357,11 @@
           columns: ["Entity"],
           data: listData.map(value => [value]),
           pagination: {
-              limit: 20
+            limit: 20
           },
           resizable: true,
           search   : true
-        }).render(document.getElementById("data_table"))
+        }).render(document.getElementById("dataTable"))
           .on("rowClick", (record) => {
             // Extract selected address
             const entity = record.srcElement.innerText;
@@ -382,6 +395,27 @@
             });
           });
 
+        // Create transactions table (will be filled with each edge data)
+        var txsTable = new gridjs.Grid({
+          columns: [
+            {
+              name : "Transaction",
+              width: "60%",
+            },
+            "Time",
+            {
+              name     : "Show on EtherScan🕵️",
+              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}'>Link</a></b>`)
+            }
+          ],
+          data: [],
+          pagination: {
+            limit: 20
+          },
+          resizable: true,
+          search   : true
+        }).render(document.getElementById("edgeTxsBody"));
+
         //*********** Render graph for results ***********//
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
@@ -413,7 +447,8 @@
               return {
                   source: edge.src,
                   target: edge.dst,
-                  amount: edge.props.amount
+                  amount: edge.props.amount,
+                  txs   : edge.props.txs
               };
           }),
           categories: nodeTypes.map(function (category) {
@@ -434,7 +469,7 @@
         // Wrap chart creation into timeout to ensure hosting element is created before chart
         setTimeout(function () {
           const canvas = document.getElementById("container");
-          // Show canvas borders by adding 'card' class
+          // Show canvas borders by adding "card" class
           canvas.classList.add("card");
           // Render nodes graph
           addrChart = echarts.init(dom=canvas, opts={
@@ -445,10 +480,10 @@
             tooltip: {
                 trigger: "item",
                 formatter: function (params) {
-                    if (params.dataType === "edge")
-                      return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
-                    else // Node
-                      return `${params.data.nodename} | Source name: ${params.data.exchname}`;
+                  if (params.dataType === "edge")
+                    return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
+                  else // Node
+                    return `${params.data.nodename} | Source name: ${params.data.exchname}`;
                 }
             },
             legend: [{
@@ -474,12 +509,36 @@
                 lineStyle: {
                   width: 10
                 }
-              }
+              },
+              edgeSymbol: ["none", "arrow"],
             }]
           });
 
           // Add listener for web-page resize events
           window.addEventListener("resize", addrChart.resize);
+          // Add listener for edge clicks
+          addrChart.on("click", function (params) {
+            console.log(params);
+            if (params.dataType === "edge" && params.data.txs) {
+              console.log("EDGE CLICK");
+              // Format: (";" TXID "," DATETIME)
+              let values = params.data.txs.split(";");
+              let tableData = [];
+
+              values.forEach(value => {
+                if (value) // Separate TXID and DATETIME
+                  tableData.push([...value.split(","), null]);
+              });
+
+              // Update table data
+              txsTable.updateConfig({
+                data: tableData
+              }).forceRender();
+
+              // Show modal containing data
+              (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
+            }
+          });
         }, 100);
       </script>
     {% endif %}
