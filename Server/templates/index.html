@@ -61,12 +61,19 @@
         text.style.display = (text.style.display === "none") ? "block" : "none";
       }
 
+      function showLoading() {
+        document.getElementById("loadSpinner").style.display = "block";
+      }
+
+      function hideLoading() {
+        document.getElementById("loadSpinner").style.display = "none";
+      }
+
       async function submitRefreshRequest(event) {
         event.preventDefault();
+        showLoading();
         // Ensure "No address found" image is hidden
         document.getElementById("notFoundAddr").style.display = "none";
-        // Show loading bar while we wait
-        document.getElementById("loadSpinner").style.display = "block";
         // Extract current range value
         const rangeValue = document.getElementById("refeshScope").value;
         // Create form and append extracted value to it
@@ -77,8 +84,8 @@
           method: "POST",
           body  : formData
         });
-        // Stop waiting/loading
-        document.getElementById("loadSpinner").style.display = "none";
+
+        hideLoading();
         // Clear URL afterwards
         window.history.replaceState({}, "", "/");
       }
@@ -196,7 +203,7 @@
             </div>
 
             <div class="d-flex justify-content-end position-relative">
-              <div id="refreshForm" style="display: none; width: 45%; position: absolute; z-index: 1000;">
+              <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
                 {% set values = syncDate.split(";") %}
                 <div><b>Highest block: </b>{{ values[0] }}</div>
                 <div><b>Latest sync time: </b>{{ values[1] }}</div>
@@ -332,7 +339,7 @@
         </footer>
     </div>
 
-    {% if resultsList == "" or resultsGraph == "" %}
+    {% if resultsGraph == "" %}
       <!-- Handle not found address -->
       <script type="text/javascript">
         // Keep faculty logo shown
@@ -340,60 +347,12 @@
         // Show "No address found" image
         document.getElementById("notFoundAddr").style.display = "block";
       </script>
-    {% elif resultsList and resultsGraph %}
+    {% elif resultsGraph %}
       <script type="text/javascript">
+        showLoading();
         // Hide faculty logo and explanatory text about used heuristics
         document.getElementById("facLogo").style.display = "none";
         document.getElementById("howItWorksText").style.display = "none";
-
-        //*********** List of clustered addresses ***********//
-        // Get data from Python
-        var listData = {{ resultsList | safe }};
-        // List of selected addresses in graph
-        const selectedNodes = new Set();
-
-        // Create results table
-        var table = new gridjs.Grid({
-          columns: ["Entity"],
-          data: listData.map(value => [value]),
-          pagination: {
-            limit: 20
-          },
-          resizable: true,
-          search   : true
-        }).render(document.getElementById("dataTable"))
-          .on("rowClick", (record) => {
-            // Extract selected address
-            const entity = record.srcElement.innerText;
-            // Toggle node out/in selected ones
-            if (selectedNodes.has(entity)) {
-              selectedNodes.delete(entity);
-              record.target.closest("tr").classList.remove("selected-row");
-            }
-            else {
-              selectedNodes.add(entity);
-              record.target.closest("tr").classList.add("selected-row");
-            }
-
-            // Update graph nodes, add focus to selected address
-            graph.nodes = graph.nodes.map(node => {
-              // Check if selected node is current one
-              const match = selectedNodes.has(node.id);
-
-              return {
-                ...node,
-                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
-                category  : ((match) ? "selected" : node.props.type)
-              };
-            });
-
-            // Propagate change to graph
-            addrChart.setOption({
-              series: [{
-                data: graph.nodes
-              }]
-            });
-          });
 
         // Create transactions table (will be filled with each edge data)
         var txsTable = new gridjs.Grid({
@@ -416,7 +375,9 @@
           search   : true
         }).render(document.getElementById("edgeTxsBody"));
 
+
         //*********** Render graph for results ***********//
+        var listData = [];
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
         // Create styling for each type of node
@@ -430,6 +391,7 @@
         let totalEtherAmount = 0.0;
         let graph = {
           nodes: graphData.nodes.map(node => {
+            listData.push([node.id]);
             // Check if processed node is target one (from user)
             const match = (node.id == {{ targetAddr }});
 
@@ -457,13 +419,6 @@
             };
           })
         };
-
-        // Show toggle button
-        document.getElementById("outterBtn").style.display = "block";
-        // Display and fill result's charts
-        document.getElementById("addrCount").innerText += table.config.data.length;
-        document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
-        document.getElementById("resCharts").style.display = "block";
 
         var addrChart;
         // Wrap chart creation into timeout to ensure hosting element is created before chart
@@ -518,9 +473,7 @@
           window.addEventListener("resize", addrChart.resize);
           // Add listener for edge clicks
           addrChart.on("click", function (params) {
-            console.log(params);
             if (params.dataType === "edge" && params.data.txs) {
-              console.log("EDGE CLICK");
               // Format: (";" TXID "," DATETIME)
               let values = params.data.txs.split(";");
               let tableData = [];
@@ -540,6 +493,62 @@
             }
           });
         }, 100);
+
+        //*********** List of clustered addresses ***********//
+        // List of selected addresses in graph
+        const selectedNodes = new Set();
+
+        // Create results table
+        var table = new gridjs.Grid({
+          columns: ["Entity"],
+          data: listData.map(value => [value]),
+          pagination: {
+            limit: 20
+          },
+          resizable: true,
+          search   : true
+        }).render(document.getElementById("dataTable"))
+          .on("rowClick", (record) => {
+            // Extract selected address
+            const entity = record.srcElement.innerText;
+            // Toggle node out/in selected ones
+            if (selectedNodes.has(entity)) {
+              selectedNodes.delete(entity);
+              record.target.closest("tr").classList.remove("selected-row");
+            }
+            else {
+              selectedNodes.add(entity);
+              record.target.closest("tr").classList.add("selected-row");
+            }
+
+            // Update graph nodes, add focus to selected address
+            graph.nodes = graph.nodes.map(node => {
+              // Check if selected node is current one
+              const match = selectedNodes.has(node.id);
+
+              return {
+                ...node,
+                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
+                category  : ((match) ? "selected" : node.props.type)
+              };
+            });
+
+            // Propagate change to graph
+            addrChart.setOption({
+              series: [{
+                data: graph.nodes
+              }]
+            });
+          });
+
+        // Show toggle button
+        document.getElementById("outterBtn").style.display = "block";
+        // Display and fill result's charts
+        document.getElementById("addrCount").innerText += table.config.data.length;
+        document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
+        document.getElementById("resCharts").style.display = "block";
+
+        hideLoading();
       </script>
     {% endif %}
   </body>

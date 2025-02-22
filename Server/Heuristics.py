@@ -116,7 +116,6 @@ class HeuristicsClass():
         ), "id(deposit)")
 
         subGraphdata    = ""
-        clustrAddrsList = ""
         # Iterate over all found deposit addresses
         for depoAddr in targetAddrDepo:
             # Construct data for subgraph containing these addresses
@@ -124,11 +123,6 @@ class HeuristicsClass():
                 f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{depoAddr}" YIELD VERTICES AS nodes, EDGES AS links'
             ).dict_for_vis(), indent=2, sort_keys=True)
 
-            # Find all leaf addresses with same deposit address
-            clustrAddrsList += json.dumps(self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-                f'MATCH (leaf:address)-->(deposit:address) WHERE id(deposit) == "{depoAddr}" AND leaf.address.type == "leaf" RETURN id(leaf)'
-            ), "id(leaf)"), indent=2)
-
         # Return prepared data
-        return clustrAddrsList, subGraphdata
+        return subGraphdata
 # End of HeuristicsClass class

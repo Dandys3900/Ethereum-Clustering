@@ -52,14 +52,13 @@ async def refreshDB(request: Request, scope: int = Form(...)):
 @app.post("/search", response_class=HTMLResponse)
 async def searchAddr(request: Request, targetAddr: str = Form(...)):
     # Collect addresses
-    resultsList, resultsGraph = await heuristics.clusterAddrs(targetAddr=targetAddr)
+    resultsGraph = await heuristics.clusterAddrs(targetAddr=targetAddr)
     # Render page
     return templates.TemplateResponse(
         request=request,
         name    = "index.html",
         context = {
             "targetAddr"   : targetAddr,
-            "resultsList"  : resultsList,
             "resultsGraph" : resultsGraph,
             "syncDate"     : await trezor.getCurrentSyncDate(),
             "exchLen"      : heuristics.getExchangeCount()
