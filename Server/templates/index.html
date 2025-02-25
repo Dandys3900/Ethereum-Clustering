@@ -33,13 +33,13 @@
       }
 
       /* Change border and cursor when hovering over table's row */
-      .gridjs-table tbody tr:hover {
+      .resultsTable .gridjs-table tbody tr:hover {
         border: 2px solid var(--FITblue);
         cursor: pointer;
       }
 
       /* Style for selected table row */
-      .selected-row {
+      .resultsTable .selected-row {
         border: 2px solid var(--FITblue);
       }
     </style>
@@ -132,6 +132,18 @@
         // Change visibility of left column
         const col = document.getElementById("results");
         col.style.display = (col.style.display === "none") ? "block" : "none";
+
+        // When results table is shown and user entered address is selected, ensure being highlighted
+        // This applies to initial page load where can't interact with table directly as being hidden
+        if (col.style.display === "block" && selectedNodes.has(userAddr)) {
+          // Select table rows
+          const rows = document.querySelectorAll(".gridjs-tr");
+
+          rows.forEach(row => {
+            if (row.innerText == userAddr)
+              row.classList.add("selected-row");
+          });
+        }
 
         // Update icon to offer hide/show
         const icon = document.getElementById("showHideLeftRow");
@@ -269,7 +281,7 @@
               <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
 
-            <div style="width: fit-content;" id="dataTable"></div>
+            <div class="resultsTable" style="width: fit-content;" id="dataTable"></div>
           </div>
 
           <!-- Results graph -->
@@ -349,10 +361,19 @@
       </script>
     {% elif resultsGraph %}
       <script type="text/javascript">
-        showLoading();
         // Hide faculty logo and explanatory text about used heuristics
         document.getElementById("facLogo").style.display = "none";
         document.getElementById("howItWorksText").style.display = "none";
+
+        // Initially create graph object
+        const canvas = document.getElementById("container");
+        // Show canvas borders by adding "card" class
+        canvas.classList.add("card");
+        // Render nodes graph
+        var addrChart = echarts.init(dom=canvas, opts={
+          renderer: "canvas"
+        });
+        addrChart.showLoading();
 
         // Create transactions table (will be filled with each edge data)
         var txsTable = new gridjs.Grid({
@@ -391,7 +412,7 @@
         let totalEtherAmount = 0.0;
         let graph = {
           nodes: graphData.nodes.map(node => {
-            listData.push([node.id]);
+            listData.push(node.id);
             // Check if processed node is target one (from user)
             const match = (node.id == {{ targetAddr }});
 
@@ -420,17 +441,8 @@
           })
         };
 
-        var addrChart;
         // Wrap chart creation into timeout to ensure hosting element is created before chart
         setTimeout(function () {
-          const canvas = document.getElementById("container");
-          // Show canvas borders by adding "card" class
-          canvas.classList.add("card");
-          // Render nodes graph
-          addrChart = echarts.init(dom=canvas, opts={
-            renderer: "canvas"
-          });
-
           addrChart.setOption({
             tooltip: {
                 trigger: "item",
@@ -497,6 +509,9 @@
         //*********** List of clustered addresses ***********//
         // List of selected addresses in graph
         const selectedNodes = new Set();
+        // Initially add user entered address
+        var userAddr = "{{ targetAddr }}";
+        selectedNodes.add(userAddr);
 
         // Create results table
         var table = new gridjs.Grid({
@@ -511,6 +526,7 @@
           .on("rowClick", (record) => {
             // Extract selected address
             const entity = record.srcElement.innerText;
+
             // Toggle node out/in selected ones
             if (selectedNodes.has(entity)) {
               selectedNodes.delete(entity);
@@ -548,7 +564,7 @@
         document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
         document.getElementById("resCharts").style.display = "block";
 
-        hideLoading();
+        addrChart.hideLoading();
       </script>
     {% endif %}
   </body>
