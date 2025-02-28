@@ -23,7 +23,7 @@
     <!-- Styles -->
     <style>
       :root {
-        /* Official FIT-blue color */
+        /* Introduce official FIT-blue color */
         --FITblue: #00ABE3;
       }
 
@@ -139,15 +139,8 @@
 
         // When results table is shown and user entered address is selected, ensure being highlighted
         // This applies to initial page load where can't interact with table directly as being hidden
-        if (col.style.display === "block" && selectedNodes.has(userAddr)) {
-          // Select table rows
-          const rows = document.querySelectorAll(".gridjs-tr");
-
-          rows.forEach(row => {
-            if (row.innerText == userAddr)
-              row.classList.add("selected-row");
-          });
-        }
+        if (col.style.display === "block" && selectedNodes.has(userAddr))
+            setHighlightResultsTableItem(userAddr, true);
 
         // Update icon to offer hide/show
         const icon = document.getElementById("showHideLeftRow");
@@ -156,6 +149,47 @@
 
         // Ensure resize of chart
         addrChart.resize();
+      }
+
+      function setHighlightResultsTableItem(addr, highlight=true) {
+        // Find it and set proper highlight class
+        document.querySelectorAll(".gridjs-tr").forEach(row => {
+            if (row.innerText.includes(addr)) {
+                if (highlight) {
+                    row.classList.add("selected-row");
+                    selectedNodes.add(row.innerText);
+                }
+                else {
+                    row.classList.remove("selected-row");
+                    selectedNodes.delete(row.innerText);
+                }
+            }
+
+            // Update shown cluster count if any selected addresses
+            if (selectedNodes.size > 0)
+              document.getElementById("addrCount").innerText = `Addresses in cluster: ${selectedNodes.size}`;
+            else // All nodes count
+              document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
+
+            // Update graph nodes, add focus to selected address
+            graph.nodes = graph.nodes.map(node => {
+              // Check if selected node is current one
+              const match = selectedNodes.has(node.id);
+
+              return {
+                ...node,
+                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
+                category  : ((match) ? "selected" : node.props.type)
+              };
+            });
+
+            // Propagate change to graph
+            addrChart.setOption({
+              series: [{
+                data: graph.nodes
+              }]
+            });
+        });
       }
     </script>
   </head>
@@ -462,6 +496,16 @@
             legend: [{
               data: nodeTypes
             }],
+            dataZoom: [
+              { type: "inside" }, // Zooming via scroll
+              { type: "slider" }  // Zoom slider
+            ],
+            toolbox: {
+              feature: {
+                dataZoom: { yAxisIndex: "none" },
+                restore : {}
+              }
+            },
             series: [{
               type      : "graph",
               layout    : "force",
@@ -534,39 +578,10 @@
             const entity = record.srcElement.innerText;
 
             // Toggle node out/in selected ones
-            if (selectedNodes.has(entity)) {
-              selectedNodes.delete(entity);
-              record.target.closest("tr").classList.remove("selected-row");
-            }
-            else {
-              selectedNodes.add(entity);
-              record.target.closest("tr").classList.add("selected-row");
-            }
-
-            // Update shown cluster count if any selected addresses
-            if (selectedNodes.size > 0)
-              document.getElementById("addrCount").innerText = `Addresses in cluster: ${selectedNodes.size}`;
-            else // All nodes count
-              document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
-
-            // Update graph nodes, add focus to selected address
-            graph.nodes = graph.nodes.map(node => {
-              // Check if selected node is current one
-              const match = selectedNodes.has(node.id);
-
-              return {
-                ...node,
-                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
-                category  : ((match) ? "selected" : node.props.type)
-              };
-            });
-
-            // Propagate change to graph
-            addrChart.setOption({
-              series: [{
-                data: graph.nodes
-              }]
-            });
+            setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
+          })
+          .on("search", (query) => {
+            setHighlightResultsTableItem(query, true);
           });
 
         // Show toggle button
