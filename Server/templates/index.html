@@ -91,12 +91,16 @@
       }
 
       function exportJSON() {
-        const json = JSON.stringify(listData.map(row => row), null, 2);
+        const json = JSON.stringify(
+          // When exporting, prefer selected nodes, default is all nodes
+          ((selectedNodes.size > 0) ? Array.from(selectedNodes) : listData).map(row => row), null, 2
+        );
         downloadFile("data.json", json);
       }
 
       function exportCSV() {
-        const csv = listData.map(row => row).join(",\n");
+        // When exporting, prefer selected nodes, default is all nodes
+        const csv = ((selectedNodes.size > 0) ? Array.from(selectedNodes) : listData).map(row => row).join(",\n");
         downloadFile("data.csv", csv);
       }
 
@@ -257,6 +261,7 @@
               <div class="modal-content">
                 <div class="modal-header">
                   <h5 class="modal-title">Edge's Transactions</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div id="edgeTxsBody" class="modal-body"></div>
@@ -383,6 +388,7 @@
               width: "60%",
             },
             "Time",
+            "Amount",
             {
               name     : "Show on EtherScan🕵️",
               formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}'>Link</a></b>`)
@@ -491,7 +497,7 @@
               let tableData = [];
 
               values.forEach(value => {
-                if (value) // Separate TXID and DATETIME
+                if (value) // Separate TXID, DATETIME and TXAMOUNT
                   tableData.push([...value.split(","), null]);
               });
 
@@ -537,6 +543,12 @@
               record.target.closest("tr").classList.add("selected-row");
             }
 
+            // Update shown cluster count if any selected addresses
+            if (selectedNodes.size > 0)
+              document.getElementById("addrCount").innerText = `Addresses in cluster: ${selectedNodes.size}`;
+            else // All nodes count
+              document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
+
             // Update graph nodes, add focus to selected address
             graph.nodes = graph.nodes.map(node => {
               // Check if selected node is current one
@@ -560,8 +572,8 @@
         // Show toggle button
         document.getElementById("outterBtn").style.display = "block";
         // Display and fill result's charts
-        document.getElementById("addrCount").innerText += table.config.data.length;
-        document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
+        document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
+        document.getElementById("usedEther").innerText = `Transferred Ether by cluster: ${Number(totalEtherAmount).toFixed(3)}`;
         document.getElementById("resCharts").style.display = "block";
 
         addrChart.hideLoading();

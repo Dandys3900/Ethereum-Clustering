@@ -62,7 +62,7 @@ class ServerHandler():
                         parentAddr = parentAddr,
                         nodeType   = nodeType,
                         # Don't waste other edge's params, use separators
-                        txId       = (";" + txID + "," + txTime),
+                        txId       = (";" + txID + "," + txTime + "," + txAmount),
                         amount     = txAmount
                     )
             except Exception as e:
