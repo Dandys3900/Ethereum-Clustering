@@ -1,6 +1,6 @@
 services:
   app:
-    image: eth_server
+    image: eth_server:latest
     build:
       context: .
     ports:
@@ -9,6 +9,7 @@ services:
       - storage-activator
     networks:
       - nebula-net
+    command: uvicorn Server.Web_Server:app --host 0.0.0.0 --port 8000
 
   metad0:
     image: docker.io/vesoft/nebula-metad:nightly

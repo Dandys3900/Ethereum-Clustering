@@ -68,7 +68,7 @@ class NebulaAPI(BaseAPI):
             Out.success(f"All needed components created succesfully")
 
     # Handles adding new node to graph
-    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", txId="", amount=0.0):
+    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", txParams="", amount=0.0):
         print(f"Adding type: {nodeType} ; name: {addrName} ; {addr}")
         # Add node (vertex) to graph
         self.ExecNebulaCommand(
@@ -77,7 +77,7 @@ class NebulaAPI(BaseAPI):
         # Parent address is given so create a path to it
         if parentAddr != "":
             self.ExecNebulaCommand(
-                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}, txs = txs + "{txId}"'
+                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}, txs = txs + "{txParams}"'
             )
 
     # Helper to catch eventual execution errors

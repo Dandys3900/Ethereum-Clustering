@@ -16,3 +16,8 @@ Before following, make sure Docker Desktop is ON and it's Nebula extension conta
 
 Then to build and run container with both THIS PROJECT & NebulaGraph, run:
 `docker-compose -f docker-compose.yml up --build`
+or without triggering build sequence
+`docker-compose -f docker-compose.yml up`
+
+To transfer docker image to Anton
+`scp -i ~/.ssh/id_ed25519 -P 25021 bp_app.tar xdanie14@anton4.fit.vutbr.cz:/home/xdanie14/project`

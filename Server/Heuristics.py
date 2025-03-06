@@ -107,15 +107,15 @@ class HeuristicsClass():
         # Try and check if any known leaf matches this address
         if targetAddr not in self.nebula.getAddrsOfType("leaf"):
             Out.error(f"Given (leaf) address {targetAddr} not found in any cluster")
-            # resultsList, resultsGraph
-            return "", ""
+            # resultsGraph
+            return ""
 
         # Find deposit address(es) of target address
         targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
             f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
         ), "id(deposit)")
 
-        subGraphdata    = ""
+        subGraphdata = ""
         # Iterate over all found deposit addresses
         for depoAddr in targetAddrDepo:
             # Construct data for subgraph containing these addresses

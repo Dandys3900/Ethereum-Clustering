@@ -34,13 +34,13 @@
 
       /* Change border and cursor when hovering over table's row */
       .resultsTable .gridjs-table tbody tr:hover {
-        border: 2px solid var(--FITblue);
+        border: 1px solid var(--FITblue);
         cursor: pointer;
       }
 
       /* Style for selected table row */
       .resultsTable .selected-row {
-        border: 2px solid var(--FITblue);
+        border: 1px solid var(--FITblue);
       }
     </style>
 
@@ -61,47 +61,46 @@
         text.style.display = (text.style.display === "none") ? "block" : "none";
       }
 
-      function showLoading() {
-        document.getElementById("loadSpinner").style.display = "block";
-      }
-
-      function hideLoading() {
-        document.getElementById("loadSpinner").style.display = "none";
-      }
-
       async function submitRefreshRequest(event) {
         event.preventDefault();
-        showLoading();
-        // Ensure "No address found" image is hidden
-        document.getElementById("notFoundAddr").style.display = "none";
-        // Extract current range value
-        const rangeValue = document.getElementById("refeshScope").value;
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
+        // Make sure to hide "No address found"
+        document.getElementById("notFoundAddr").style.display = "block";
+        // Show spinner
+        document.getElementById("loadSpinner").style.display = "block";
+
         // Create form and append extracted value to it
         const formData = new FormData();
-        formData.append("scope", rangeValue);
+        formData.append("scope", document.getElementById("refeshScope").value);
 
         await fetch("/refreshDB", {
           method: "POST",
           body  : formData
         });
 
-        hideLoading();
+        // Hide spinner
+        document.getElementById("loadSpinner").style.display = "none";
         // Clear URL afterwards
         window.history.replaceState({}, "", "/");
       }
 
       function exportJSON() {
-        const json = JSON.stringify(
-          // When exporting, prefer selected nodes, default is all nodes
-          ((selectedNodes.size > 0) ? Array.from(selectedNodes) : listData).map(row => row), null, 2
+        // When exporting, prefer selected nodes, default is all nodes
+        downloadFile(
+          "data.json",
+          JSON.stringify(
+            ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)), null, 2
+          )
         );
-        downloadFile("data.json", json);
       }
 
       function exportCSV() {
         // When exporting, prefer selected nodes, default is all nodes
-        const csv = ((selectedNodes.size > 0) ? Array.from(selectedNodes) : listData).map(row => row).join(",\n");
-        downloadFile("data.csv", csv);
+        downloadFile(
+          "data.csv",
+          ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)).join(",\n")
+        );
       }
 
       function downloadFile(filename, content) {
@@ -122,7 +121,7 @@
 
             // Remove info text after 1s
             setTimeout(() => {
-              // Get substring effectively removing added green tick icon
+              // Set substring effectively removing added green tick icon
               element.innerHTML = String(element.innerHTML).substring(1);
             }, 1000);
           });
@@ -140,7 +139,7 @@
         // When results table is shown and user entered address is selected, ensure being highlighted
         // This applies to initial page load where can't interact with table directly as being hidden
         if (col.style.display === "block" && selectedNodes.has(userAddr))
-            setHighlightResultsTableItem(userAddr, true);
+          setHighlightResultsTableItem(userAddr, true);
 
         // Update icon to offer hide/show
         const icon = document.getElementById("showHideLeftRow");
@@ -154,41 +153,48 @@
       function setHighlightResultsTableItem(addr, highlight=true) {
         // Find it and set proper highlight class
         document.querySelectorAll(".gridjs-tr").forEach(row => {
-            if (row.innerText.includes(addr)) {
-                if (highlight) {
-                    row.classList.add("selected-row");
-                    selectedNodes.add(row.innerText);
-                }
-                else {
-                    row.classList.remove("selected-row");
-                    selectedNodes.delete(row.innerText);
-                }
-            }
+          const value = row.innerText.toUpperCase();
 
-            // Update shown cluster count if any selected addresses
-            if (selectedNodes.size > 0)
-              document.getElementById("addrCount").innerText = `Addresses in cluster: ${selectedNodes.size}`;
-            else // All nodes count
-              document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
+          if (value.includes(addr)) {
+            row.classList.toggle("selected-row");
+            if (highlight)
+              selectedNodes.add(value);
+            else
+              selectedNodes.delete(value);
+          }
+        });
 
-            // Update graph nodes, add focus to selected address
-            graph.nodes = graph.nodes.map(node => {
-              // Check if selected node is current one
-              const match = selectedNodes.has(node.id);
+        // Update shown cluster count if any selected addresses
+        if (selectedNodes.size > 0) {
+          document.getElementById("addrCount").innerHTML = `&nbsp;Selected addresses in cluster: ${selectedNodes.size}`;
+          document.getElementById("usedEther").innerHTML = `&nbsp;Transferred Ether by selected: ${Number(
+            [...selectedNodes].reduce((sum, key) => sum + nodesParams[key].amount, 0.0)
+          ).toFixed(3)}`;
+        }
+        else { // All nodes count
+          document.getElementById("addrCount").innerHTML = `&nbsp;Addresses in cluster: ${Object.keys(nodesParams).size}`;
+          document.getElementById("usedEther").innerHTML = `&nbsp;Transferred Ether by cluster: ${Number(
+            Object.values(nodesParams).reduce((sum, item) => sum + item.amount, 0.0)
+          ).toFixed(3)}`;
+        }
 
-              return {
-                ...node,
-                symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
-                category  : ((match) ? "selected" : node.props.type)
-              };
-            });
+        // Update graph nodes, add focus to selected address
+        graph.nodes = graph.nodes.map(node => {
+          // Determine node correct type/category
+          const type = ((selectedNodes.has(node.id)) ? "selected" : node.props.type);
 
-            // Propagate change to graph
-            addrChart.setOption({
-              series: [{
-                data: graph.nodes
-              }]
-            });
+          return {
+            ...node,
+            symbolSize: nodeStyles[type].size,
+            category  : type
+          };
+        });
+
+        // Propagate change to graph
+        addrChart.setOption({
+          series: [{
+            data: graph.nodes
+          }]
         });
       }
     </script>
@@ -212,7 +218,7 @@
               <div class="card">
                 <div class="card-body d-flex">
                   <i class="bi bi-bounding-box-circles"></i>
-                  <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster: </h6>
+                  <h6 id="addrCount" class="card-title"></h6>
                 </div>
               </div>
 
@@ -220,7 +226,7 @@
               <div class="card">
                 <div class="card-body d-flex">
                   <i class="bi bi-bank"></i>
-                  <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster: </h6>
+                  <h6 id="usedEther" class="card-title"></h6>
                 </div>
               </div>
             </div>
@@ -244,6 +250,11 @@
             <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
               <img src="/static/NotFoundImg.png" class="img-fluid">
             </div>
+
+            <!-- Ongoing refresh (maintenance) -->
+            <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
+              <img src="/static/maintenanceOn.png" class="img-fluid">
+            </div>
           </div>
 
           <!-- Menu -->
@@ -252,7 +263,7 @@
               <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
             </div>
 
-            <div class="d-flex justify-content-end position-relative">
+            <div class="d-flex justify-content-end position-relative mt-2">
               <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
                 {% set values = syncDate.split(";") %}
                 <div><b>Highest block: </b>{{ values[0] }}</div>
@@ -290,7 +301,7 @@
           </div>
 
           <!-- Dialog showing transactions for given edge -->
-          <div class="modal fade" id="edgeTxs" role="dialog" tabindex="-1" aria-hidden="true">
+          <div class="modal fade" id="edgeTxs" role="dialog" tabindex="-1">
             <div class="modal-dialog" style="max-width: 70%; margin: auto;">
               <div class="modal-content">
                 <div class="modal-header">
@@ -305,7 +316,7 @@
         </div>
 
         <!-- Second row: Results table + graph -->
-        <div class="row flex-grow-1">
+        <div id="secondRow" class="row flex-grow-1">
           <button id="outterBtn" class="btn btn-warning" style="display: none; width: fit-content; height: fit-content;" onclick="triggerLeftRow('outterBtn')">
             <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
           </button>
@@ -390,11 +401,32 @@
         </footer>
     </div>
 
+    {% if ongoingRefresh %}
+      <!-- Handle ongoing refresh -->
+      <script type="text/javascript">
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
+        // Disable all buttons
+        document.querySelectorAll("button").forEach(button => button.disabled = true);
+        // Show "Maintenance in progress" image
+        document.getElementById("refreshOn").style.display = "block";
+      </script>
+    {% else %}
+      <script type="text/javascript">
+        const secondRow = document.getElementById("secondRow");
+        // Show content of second row
+        if (secondRow.style.display === "none")
+          secondRow.style.display = "block";
+        // Re-enable all buttons
+        document.querySelectorAll("button").forEach(button => button.enabled = true);
+        // Hide "Maintenance in progress" image
+        document.getElementById("refreshOn").style.display = "none";
+      </script>
+    {% endif %}
+
     {% if resultsGraph == "" %}
       <!-- Handle not found address -->
       <script type="text/javascript">
-        // Keep faculty logo shown
-        document.getElementById("facLogo").style.display = "block";
         // Show "No address found" image
         document.getElementById("notFoundAddr").style.display = "block";
       </script>
@@ -403,6 +435,8 @@
         // Hide faculty logo and explanatory text about used heuristics
         document.getElementById("facLogo").style.display = "none";
         document.getElementById("howItWorksText").style.display = "none";
+        // Show toggle button
+        document.getElementById("outterBtn").style.display = "block";
 
         // Initially create graph object
         const canvas = document.getElementById("container");
@@ -419,7 +453,7 @@
           columns: [
             {
               name : "Transaction",
-              width: "60%",
+              attributes: { style: "width: 50%;" }
             },
             "Time",
             "Amount",
@@ -438,127 +472,125 @@
 
 
         //*********** Render graph for results ***********//
-        var listData = [];
+        var nodesParams = {/* Type, Amount, Styling*/};
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
         // Create styling for each type of node
         let nodeStyles = {
-          "exchange": 12,
-          "deposit" : 10,
-          "leaf"    : 8
+          "selected": {size: 14, color: ""       },
+          "exchange": {size: 12, color: "#6270c0"},
+          "deposit" : {size: 10, color: "#a1ca7f"},
+          "leaf"    : {size: 8,  color: "#ecc96c"}
         };
 
-        const nodeTypes = ["exchange", "deposit", "leaf", "selected"];
-        let totalEtherAmount = 0.0;
         let graph = {
           nodes: graphData.nodes.map(node => {
-            listData.push(node.id);
-            // Check if processed node is target one (from user)
-            const match = (node.id == {{ targetAddr }});
+            // Store node params
+            nodesParams[node.id] = {
+              type  : node.props.type,
+              amount: 0.0, // Initial value
+              style : nodeStyles[type]
+            };
 
             return {
               ...node,
               nodename  : node.id,
               exchname  : node.props.name,
-              symbolSize: ((match) ? 14         : nodeStyles[node.props.type]),
-              category  : ((match) ? "selected" : node.props.type)
+              symbolSize: nodeStyles[node.props.type].size,
+              category  : node.props.type
             };
           }),
           links: graphData.edges.map(edge => {
-              // Collect sum of all transferred Ether for cluster
-              totalEtherAmount += parseFloat(edge.props.amount);
-              return {
-                  source: edge.src,
-                  target: edge.dst,
-                  amount: edge.props.amount,
-                  txs   : edge.props.txs
-              };
+            // Accumulate address Ether amount
+            nodesParams[edge.src].amount += parseFloat(edge.props.amount);
+
+            return {
+              source: edge.src,
+              target: edge.dst,
+              amount: edge.props.amount,
+              txs   : edge.props.txs
+            };
           }),
-          categories: nodeTypes.map(function (category) {
+          categories: Object.keys(nodeStyles).map(function (category) {
             return {
               name: category
             };
           })
         };
 
-        // Wrap chart creation into timeout to ensure hosting element is created before chart
-        setTimeout(function () {
-          addrChart.setOption({
-            tooltip: {
-                trigger: "item",
-                formatter: function (params) {
-                  if (params.dataType === "edge")
-                    return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
-                  else // Node
-                    return `${params.data.nodename} | Source name: ${params.data.exchname}`;
-                }
+        // Set chart's options
+        addrChart.setOption({
+          tooltip: {
+              trigger: "item",
+              formatter: function (params) {
+                if (params.dataType === "edge") // Edge
+                  return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
+                else // Node
+                  return `${params.data.nodename} | Source name: ${params.data.exchname}`;
+              }
+          },
+          legend: [{
+            data: Object.keys(nodeStyles)
+          }],
+          toolbox: {
+            feature: {
+              restore: {
+                show: true,
+                title: "Re-create"
+              },
+              saveAsImage: {
+                show: true
+              }
+            }
+          },
+          series: [{
+            type      : "graph",
+            layout    : "force",
+            data      : graph.nodes,
+            links     : graph.links,
+            categories: graph.categories,
+            roam      : true,
+            zoom      : 1,
+            center: ['50%', '50%'],
+            force: {
+              repulsion: 0,
+              friction : 0,
+              gravity  : 0
             },
-            legend: [{
-              data: nodeTypes
-            }],
-            dataZoom: [
-              { type: "inside" }, // Zooming via scroll
-              { type: "slider" }  // Zoom slider
-            ],
-            toolbox: {
-              feature: {
-                dataZoom: { yAxisIndex: "none" },
-                restore : {}
+            lineStyle: {
+              color: "source"
+            },
+            emphasis: {
+              focus: "adjacency",
+              lineStyle: {
+                width: 10
               }
             },
-            series: [{
-              type      : "graph",
-              layout    : "force",
-              data      : graph.nodes,
-              links     : graph.links,
-              categories: graph.categories,
-              roam      : true,
-              force: {
-                repulsion: 0,
-                friction : 0,
-                gravity  : 0
-              },
-              lineStyle: {
-                color: "source"
-              },
-              emphasis: {
-                focus: "adjacency",
-                lineStyle: {
-                  width: 10
-                }
-              },
-              edgeSymbol: ["none", "arrow"],
-            }]
-          });
+            edgeSymbol: ["none", "arrow"],
+          }]
+        });
 
-          // Add listener for web-page resize events
-          window.addEventListener("resize", addrChart.resize);
-          // Add listener for edge clicks
-          addrChart.on("click", function (params) {
-            if (params.dataType === "edge" && params.data.txs) {
-              // Format: (";" TXID "," DATETIME)
-              let values = params.data.txs.split(";");
-              let tableData = [];
+        // Add listener for web-page resize events
+        window.addEventListener("resize", addrChart.resize);
+        // Add listener for edge clicks
+        addrChart.on("click", function (params) {
+          if (params.dataType === "edge" && params.data.txs) {
+            // Update table data
+            txsTable.updateConfig({
+              data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
+                params.data.txs.split(";").map(value => {
+                  return [...value.split(","), null];
+                })
+            }).forceRender();
 
-              values.forEach(value => {
-                if (value) // Separate TXID, DATETIME and TXAMOUNT
-                  tableData.push([...value.split(","), null]);
-              });
-
-              // Update table data
-              txsTable.updateConfig({
-                data: tableData
-              }).forceRender();
-
-              // Show modal containing data
-              (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
-            }
-          });
-        }, 100);
+            // Show modal
+            (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
+          }
+        });
 
         //*********** List of clustered addresses ***********//
         // List of selected addresses in graph
-        const selectedNodes = new Set();
+        var selectedNodes = new Set();
         // Initially add user entered address
         var userAddr = "{{ targetAddr }}";
         selectedNodes.add(userAddr);
@@ -566,7 +598,12 @@
         // Create results table
         var table = new gridjs.Grid({
           columns: ["Entity"],
-          data: listData.map(value => [value]),
+          data: Object.keys(nodesParams).map(value => [
+            gridjs.html(`
+              <span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
+              ${value}
+            `)
+          ]),
           pagination: {
             limit: 20
           },
@@ -576,20 +613,27 @@
           .on("rowClick", (record) => {
             // Extract selected address
             const entity = record.srcElement.innerText;
-
             // Toggle node out/in selected ones
             setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
-          })
-          .on("search", (query) => {
-            setHighlightResultsTableItem(query, true);
           });
 
-        // Show toggle button
-        document.getElementById("outterBtn").style.display = "block";
         // Display and fill result's charts
-        document.getElementById("addrCount").innerText = `Addresses in cluster: ${table.config.data.length}`;
-        document.getElementById("usedEther").innerText = `Transferred Ether by cluster: ${Number(totalEtherAmount).toFixed(3)}`;
         document.getElementById("resCharts").style.display = "block";
+        setHighlightResultsTableItem(userAddr, true);
+
+        // Resolve absence of "search" event in grid.js
+        // Add global listener for input events and select ones related to table search element
+        document.addEventListener("input", event => {
+          if (event.target.matches(".gridjs-search input")) {
+            selectedNodes.clear();
+
+            let query = event.target.value;
+            setTimeout(() => {
+              // When empty string -> search ended and clear highlights
+              setHighlightResultsTableItem(query, ((query) ? true : false));
+            }, 50);
+          }
+        });
 
         addrChart.hideLoading();
       </script>
