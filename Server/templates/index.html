@@ -139,7 +139,7 @@
         // When results table is shown and user entered address is selected, ensure being highlighted
         // This applies to initial page load where can't interact with table directly as being hidden
         if (col.style.display === "block" && selectedNodes.has(userAddr))
-          setHighlightResultsTableItem(userAddr, true);
+          setHighlightResultsTableItem(userAddr);
 
         // Update icon to offer hide/show
         const icon = document.getElementById("showHideLeftRow");
@@ -153,14 +153,18 @@
       function setHighlightResultsTableItem(addr, highlight=true) {
         // Find it and set proper highlight class
         document.querySelectorAll(".gridjs-tr").forEach(row => {
-          const value = row.innerText.toUpperCase();
+          const value = row.innerText.toUpperCase().trim();
 
           if (value.includes(addr)) {
-            row.classList.toggle("selected-row");
-            if (highlight)
+
+            if (highlight) {
+              row.classList.add("selected-row");
               selectedNodes.add(value);
-            else
+            }
+            else {
+              row.classList.remove("selected-row");
               selectedNodes.delete(value);
+            }
           }
         });
 
@@ -172,7 +176,7 @@
           ).toFixed(3)}`;
         }
         else { // All nodes count
-          document.getElementById("addrCount").innerHTML = `&nbsp;Addresses in cluster: ${Object.keys(nodesParams).size}`;
+          document.getElementById("addrCount").innerHTML = `&nbsp;Addresses in cluster: ${Object.keys(nodesParams).length}`;
           document.getElementById("usedEther").innerHTML = `&nbsp;Transferred Ether by cluster: ${Number(
             Object.values(nodesParams).reduce((sum, item) => sum + item.amount, 0.0)
           ).toFixed(3)}`;
@@ -472,24 +476,23 @@
 
 
         //*********** Render graph for results ***********//
-        var nodesParams = {/* Type, Amount, Styling*/};
+        var nodesParams = {/*Amount, Styling*/};
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
         // Create styling for each type of node
         let nodeStyles = {
-          "selected": {size: 14, color: ""       },
           "exchange": {size: 12, color: "#6270c0"},
           "deposit" : {size: 10, color: "#a1ca7f"},
-          "leaf"    : {size: 8,  color: "#ecc96c"}
+          "leaf"    : {size: 8,  color: "#ecc96c"},
+          "selected": {size: 14, color: ""       } // Order affects nodes color
         };
 
         let graph = {
           nodes: graphData.nodes.map(node => {
             // Store node params
             nodesParams[node.id] = {
-              type  : node.props.type,
               amount: 0.0, // Initial value
-              style : nodeStyles[type]
+              style : nodeStyles[node.props.type]
             };
 
             return {
@@ -612,14 +615,14 @@
         }).render(document.getElementById("dataTable"))
           .on("rowClick", (record) => {
             // Extract selected address
-            const entity = record.srcElement.innerText;
+            const entity = record.srcElement.innerText.trim();
             // Toggle node out/in selected ones
             setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
           });
 
         // Display and fill result's charts
         document.getElementById("resCharts").style.display = "block";
-        setHighlightResultsTableItem(userAddr, true);
+        setHighlightResultsTableItem(userAddr);
 
         // Resolve absence of "search" event in grid.js
         // Add global listener for input events and select ones related to table search element
@@ -627,7 +630,7 @@
           if (event.target.matches(".gridjs-search input")) {
             selectedNodes.clear();
 
-            let query = event.target.value;
+            let query = event.target.value.toUpperCase();
             setTimeout(() => {
               // When empty string -> search ended and clear highlights
               setHighlightResultsTableItem(query, ((query) ? true : false));
