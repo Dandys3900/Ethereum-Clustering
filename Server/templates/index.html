@@ -638,8 +638,8 @@
         document.addEventListener("input", event => {
           if (event.target.matches(".gridjs-search input")) {
             selectedNodes.clear();
-
             let query = event.target.value.toUpperCase();
+
             setTimeout(() => {
               // When empty string -> search ended and clear highlights
               setHighlightResultsTableItem(query, ((query) ? true : false));
