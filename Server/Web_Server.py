@@ -64,6 +64,8 @@ async def refreshDB(request: Request, scope: int = Form(...)):
 # Init search
 @app.post("/search", response_class=HTMLResponse)
 async def searchAddr(request: Request, targetAddr: str = Form(...)):
+    # Ensure capitalized search address before processing
+    targetAddr = targetAddr.upper()
     # Collect addresses
     resultsGraph = await heuristics.clusterAddrs(targetAddr=targetAddr)
 

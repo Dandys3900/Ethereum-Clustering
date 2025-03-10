@@ -90,3 +90,4 @@ async def test_SearchEndpoint():
     assert response.status_code == 200
     assert "0X0000000000000000000000000000000000000003" in response.text
     assert "0X0000000000000000000000000000000000000004" in response.text
+    assert "0X0000000000000000000000000000000000000005" not in response.text

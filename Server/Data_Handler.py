@@ -50,7 +50,7 @@ class ServerHandler():
                 # Convert from Wei -> Ether
                 txAmount = float(tx.get("vout")[0].get("value")) / ETH_WEI
                 # Also extract transaction ID and epoch time
-                txID    = str(tx.get("txid"))
+                txID   = str(tx.get("txid"))
                 txTime = datetime.fromtimestamp(float(tx.get("blockTime"))).strftime("%Y-%m-%d | %H:%M:%S")
 
                 # Transaction contain target address and direction is TO target address
@@ -62,7 +62,7 @@ class ServerHandler():
                         parentAddr = parentAddr,
                         nodeType   = nodeType,
                         # Don't waste other edge's params, use separators
-                        txParams       = f";{txID},{txTime},{txAmount}",
+                        txParams   = f";{txID},{txTime},{txAmount}",
                         amount     = txAmount
                     )
             except Exception as e:

@@ -12,7 +12,7 @@ services:
     command: uvicorn Server.Web_Server:app --host 0.0.0.0 --port 8000
 
   metad0:
-    image: docker.io/vesoft/nebula-metad:nightly
+    image: docker.io/vesoft/nebula-metad:latest
     environment:
       USER: root
     command:
@@ -47,7 +47,7 @@ services:
       - SYS_PTRACE
 
   storaged0:
-    image: docker.io/vesoft/nebula-storaged:nightly
+    image: docker.io/vesoft/nebula-storaged:latest
     environment:
       USER: root
     command:
@@ -84,7 +84,7 @@ services:
       - SYS_PTRACE
 
   graphd:
-    image: docker.io/vesoft/nebula-graphd:nightly
+    image: docker.io/vesoft/nebula-graphd:latest
     environment:
       USER: root
     command:
@@ -118,7 +118,7 @@ services:
       - SYS_PTRACE
 
   storage-activator:
-    image: docker.io/vesoft/nebula-console:nightly
+    image: docker.io/vesoft/nebula-console:latest
     entrypoint: ""
     environment:
       ACTIVATOR_RETRY: ${ACTIVATOR_RETRY:-30}

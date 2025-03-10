@@ -153,10 +153,9 @@
       function setHighlightResultsTableItem(addr, highlight=true) {
         // Find it and set proper highlight class
         document.querySelectorAll(".gridjs-tr").forEach(row => {
-          const value = row.innerText.toUpperCase().trim();
+          const value = row.innerText.trim();
 
           if (value.includes(addr)) {
-
             if (highlight) {
               row.classList.add("selected-row");
               selectedNodes.add(value);
@@ -201,6 +200,12 @@
           }]
         });
       }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const element = document.getElementById("takeMeHome");
+        // If not on home page, show "Home" button
+        element.style.display = (window.location.pathname !== "/") ? "block" : "none";
+      });
     </script>
   </head>
   <body>
@@ -264,6 +269,7 @@
           <!-- Menu -->
           <div class="col">
             <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
+              <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
               <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
             </div>
 
@@ -275,6 +281,7 @@
                 <hr>
 
                 <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
+                <br>
                 {% set defCount = (exchLen / 2) | int %}
                 <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
                 <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
@@ -433,6 +440,8 @@
       <script type="text/javascript">
         // Show "No address found" image
         document.getElementById("notFoundAddr").style.display = "block";
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
       </script>
     {% elif resultsGraph %}
       <script type="text/javascript">
@@ -581,7 +590,7 @@
             // Update table data
             txsTable.updateConfig({
               data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
-                params.data.txs.split(";").map(value => {
+                params.data.txs.split(";").filter(Boolean).map(value => {
                   return [...value.split(","), null];
                 })
             }).forceRender();
