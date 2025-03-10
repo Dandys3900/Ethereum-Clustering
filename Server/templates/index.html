@@ -22,18 +22,33 @@
 
     <!-- Styles -->
     <style>
+      :root {
+        /* Introduce official FIT-blue color */
+        --FITblue: #00ABE3;
+      }
+
       .btn-primary {
-        /* Official FIT-blue color */
-        background-color: #00ABE3;
+        background-color: var(--FITblue);
         border: none;
+      }
+
+      /* Change border and cursor when hovering over table's row */
+      .resultsTable .gridjs-table tbody tr:hover {
+        border: 1px solid var(--FITblue);
+        cursor: pointer;
+      }
+
+      /* Style for selected table row */
+      .resultsTable .selected-row {
+        border: 1px solid var(--FITblue);
       }
     </style>
 
     <!-- JavaScript -->
     <script>
       function showRangeValue(rangeElement) {
-        // Get and update current value of range and update label
-        document.getElementById("refreshLabel").innerText = "Refresh scope: " + rangeElement.value + " %";
+        document.getElementById("refreshLabel").innerText = rangeElement.value + " %";
+        document.getElementById("exchLenLabel").innerText = Math.floor({{ exchLen }} * (rangeElement.value / 100));
       }
 
       function triggerMenu() {
@@ -48,30 +63,44 @@
 
       async function submitRefreshRequest(event) {
         event.preventDefault();
-        // Ensure "No address found" image is hidden
-        document.getElementById("notFoundAddr").style.display = "none";
-        // Show loading bar while we wait
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
+        // Make sure to hide "No address found"
+        document.getElementById("notFoundAddr").style.display = "block";
+        // Show spinner
         document.getElementById("loadSpinner").style.display = "block";
-        // Extract current range value
-        const rangeValue = document.getElementById("refeshScope").value;
 
-        await fetch(`/refreshDB?refreshScope=${rangeValue}`, {
-          method: "GET"
+        // Create form and append extracted value to it
+        const formData = new FormData();
+        formData.append("scope", document.getElementById("refeshScope").value);
+
+        await fetch("/refreshDB", {
+          method: "POST",
+          body  : formData
         });
-        // Stop waiting/loading
+
+        // Hide spinner
         document.getElementById("loadSpinner").style.display = "none";
         // Clear URL afterwards
         window.history.replaceState({}, "", "/");
       }
 
       function exportJSON() {
-        const json = JSON.stringify(data.map(row => row), null, 2);
-        downloadFile("data.json", json);
+        // When exporting, prefer selected nodes, default is all nodes
+        downloadFile(
+          "data.json",
+          JSON.stringify(
+            ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)), null, 2
+          )
+        );
       }
 
       function exportCSV() {
-        const csv = data.map(row => row).join(",\n");
-        downloadFile("data.csv", csv);
+        // When exporting, prefer selected nodes, default is all nodes
+        downloadFile(
+          "data.csv",
+          ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)).join(",\n")
+        );
       }
 
       function downloadFile(filename, content) {
@@ -92,11 +121,91 @@
 
             // Remove info text after 1s
             setTimeout(() => {
-              // Get substring effectively removing added green tick icon
+              // Set substring effectively removing added green tick icon
               element.innerHTML = String(element.innerHTML).substring(1);
             }, 1000);
           });
       }
+
+      function triggerLeftRow(whichBtn) {
+        // Change visibility of outter trigger button
+        const btn = document.getElementById("outterBtn");
+        btn.style.display = (whichBtn === "innerBtn") ? "block" : "none";
+
+        // Change visibility of left column
+        const col = document.getElementById("results");
+        col.style.display = (col.style.display === "none") ? "block" : "none";
+
+        // When results table is shown and user entered address is selected, ensure being highlighted
+        // This applies to initial page load where can't interact with table directly as being hidden
+        if (col.style.display === "block" && selectedNodes.has(userAddr))
+          setHighlightResultsTableItem(userAddr);
+
+        // Update icon to offer hide/show
+        const icon = document.getElementById("showHideLeftRow");
+        icon.classList.toggle("bi-arrow-bar-left");
+        icon.classList.toggle("bi-arrow-bar-right");
+
+        // Ensure resize of chart
+        addrChart.resize();
+      }
+
+      function setHighlightResultsTableItem(addr, highlight=true) {
+        // Find it and set proper highlight class
+        document.querySelectorAll(".gridjs-tr").forEach(row => {
+          const value = row.innerText.trim();
+
+          if (value.includes(addr)) {
+            if (highlight) {
+              row.classList.add("selected-row");
+              selectedNodes.add(value);
+            }
+            else {
+              row.classList.remove("selected-row");
+              selectedNodes.delete(value);
+            }
+          }
+        });
+
+        // Update shown cluster count if any selected addresses
+        if (selectedNodes.size > 0) {
+          document.getElementById("addrCount").innerHTML = `&nbsp;Selected addresses in cluster: ${selectedNodes.size}`;
+          document.getElementById("usedEther").innerHTML = `&nbsp;Transferred Ether by selected: ${Number(
+            [...selectedNodes].reduce((sum, key) => sum + nodesParams[key].amount, 0.0)
+          ).toFixed(3)}`;
+        }
+        else { // All nodes count
+          document.getElementById("addrCount").innerHTML = `&nbsp;Addresses in cluster: ${Object.keys(nodesParams).length}`;
+          document.getElementById("usedEther").innerHTML = `&nbsp;Transferred Ether by cluster: ${Number(
+            Object.values(nodesParams).reduce((sum, item) => sum + item.amount, 0.0)
+          ).toFixed(3)}`;
+        }
+
+        // Update graph nodes, add focus to selected address
+        graph.nodes = graph.nodes.map(node => {
+          // Determine node correct type/category
+          const type = ((selectedNodes.has(node.id)) ? "selected" : node.props.type);
+
+          return {
+            ...node,
+            symbolSize: nodeStyles[type].size,
+            category  : type
+          };
+        });
+
+        // Propagate change to graph
+        addrChart.setOption({
+          series: [{
+            data: graph.nodes
+          }]
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const element = document.getElementById("takeMeHome");
+        // If not on home page, show "Home" button
+        element.style.display = (window.location.pathname !== "/") ? "block" : "none";
+      });
     </script>
   </head>
   <body>
@@ -104,91 +213,172 @@
     <div class="container-fluid d-flex flex-column min-vh-100">
         <!-- First row: Count chart + search bar + menu -->
         <div class="row">
-            <!-- Clustered addresses count -->
-            <div class="col position-relative">
-                <!-- Faculty logo -->
-                <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
-                  <a href="https://www.fit.vut.cz/.en">
-                    <img src="/static/VUTFIT_Logo.png" class="img-fluid">
-                  </a>
-                </div>
-
-                <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
-                  <!-- Count of clustered addresses -->
-                  <div class="card">
-                    <div class="card-body d-flex">
-                      <i class="bi bi-bounding-box-circles"></i>
-                      <h6 id="addrCount" class="card-title">&nbsp;Addresses in cluster </h6>
-                    </div>
-                  </div>
-                  <!-- Amount of Ether used by cluster -->
-                  <div class="card">
-                    <div class="card-body d-flex">
-                      <i class="bi bi-bank"></i>
-                      <h6 id="usedEther" class="card-title">&nbsp;Transferred Ether by cluster </h6>
-                    </div>
-                  </div>
-                </div>
+          <!-- Clustered addresses count -->
+          <div class="col position-relative">
+            <!-- Faculty logo -->
+            <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+              <a href="https://www.fit.vut.cz/.en">
+                <img src="/static/VUTFIT_Logo.png" class="img-fluid">
+              </a>
             </div>
 
-            <!-- Search bar -->
-            <div class="col-md-4 d-flex flex-column align-items-center">
-                <h1 style="text-align: center; margin-top: 1em; margin-bottom: 1em;">
-                    Ethereum Address Clustering
-                </h1>
-
-                <form id="searchForm" class="d-flex" style="width: 100%;" action="/search" method="get">
-                    <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" aria-label="Search" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$">
-                    <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
-                </form>
-
-                <!-- DB refresh spinner -->
-                <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
-
-                <!-- Address not found -->
-                <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
-                  <img src="/static/NotFoundImg.png" class="img-fluid">
+            <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
+              <!-- Count of clustered addresses -->
+              <div class="card">
+                <div class="card-body d-flex">
+                  <i class="bi bi-bounding-box-circles"></i>
+                  <h6 id="addrCount" class="card-title"></h6>
                 </div>
+              </div>
+
+              <!-- Amount of Ether used by cluster -->
+              <div class="card">
+                <div class="card-body d-flex">
+                  <i class="bi bi-bank"></i>
+                  <h6 id="usedEther" class="card-title"></h6>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search bar -->
+          <div class="col-md-4 d-flex flex-column align-items-center">
+            <h1 style="text-align: center; margin-top: 1em; margin-bottom: 1em;">
+              Ethereum Address Clustering
+            </h1>
+
+            <form id="searchForm" class="d-flex" style="width: 100%; margin-bottom: 10px;" action="/search" method="post">
+              <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000" value="{{ targetAddr }}">
+              <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
+            </form>
+
+            <!-- DB refresh spinner -->
+            <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
+
+            <!-- Address not found -->
+            <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
+              <img src="/static/NotFoundImg.png" class="img-fluid">
             </div>
 
-            <!-- Menu -->
-            <div class="col">
-                <div class="d-flex justify-content-end" style="margin-top: 1.5em;">
-                    <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
+            <!-- Ongoing refresh (maintenance) -->
+            <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
+              <img src="/static/maintenanceOn.png" class="img-fluid">
+            </div>
+          </div>
+
+          <!-- Menu -->
+          <div class="col">
+            <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
+              <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
+              <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
+            </div>
+
+            <div class="d-flex justify-content-end position-relative mt-2">
+              <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
+                {% set values = syncDate.split(";") %}
+                <div><b>Highest block: </b>{{ values[0] }}</div>
+                <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                <hr>
+
+                <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
+                <br>
+                {% set defCount = (exchLen / 2) | int %}
+                <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
+                <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh Database</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Confirmation dialog for DB refresh -->
+          <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirm Database Refresh</h5>
                 </div>
 
-                <div class="d-flex justify-content-end">
-                    <form id="refreshForm" onsubmit="submitRefreshRequest(event)" style="display: none; width: 200px;">
-                        <label id="refreshLabel" for="refeshScope" class="form-label">Refresh scope: 50 %</label>
-                        <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
-                        <button class="btn btn-danger" type="submit">Refresh Database</button>
-                    </form>
+                <div class="modal-body">
+                  Performing database update will erase all currently stored values and will trigger re-clustering.
+                  This action can take hours depending on selected scope.
                 </div>
+
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
+                  <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)">Proceed</button>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <!-- Dialog showing transactions for given edge -->
+          <div class="modal fade" id="edgeTxs" role="dialog" tabindex="-1">
+            <div class="modal-dialog" style="max-width: 70%; margin: auto;">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Edge's Transactions</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div id="edgeTxsBody" class="modal-body"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Second row: Results table + graph -->
-        <div class="row flex-grow-1">
-            <!-- Results table -->
-            <div class="col-md-3">
-                <div id="exports" style="display: none; gap: 5px;">
-                    <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
-                    <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
-                </div>
-                <div id="data_table"></div>
+        <div id="secondRow" class="row flex-grow-1">
+          <button id="outterBtn" class="btn btn-warning" style="display: none; width: fit-content; height: fit-content;" onclick="triggerLeftRow('outterBtn')">
+            <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+          </button>
+
+          <!-- Results table -->
+          <div id="results" class="col-md-3" style="display: none;">
+            <div id="exportsBtns" class="gap-3" style="display: block;">
+              <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
+                <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+              </button>
+              <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
+              <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
             </div>
 
-            <!-- Results graph -->
-            <div class="col" style="padding-right: 10px;">
-                <div id="container" style="height: 100%;"></div>
+            <div class="resultsTable" style="width: fit-content;" id="dataTable"></div>
+          </div>
+
+          <!-- Results graph -->
+          <div class="col-md">
+            <div id="container" style="height: 100%;">
+              <div id="howItWorksText" class="row d-flex" style="display: block; margin-top: 5%;">
+                <div class="col"></div>
+                <!-- Text explaining basics of used heuristics -->
+                <div class="col-md-4">
+                  <h3><i class="bi bi-person-raised-hand"></i> How this clustering actually works?</h3>
+                  <hr>
+                  Clustering heuristics used by this application is based on following principle.
+                  Whenever exchange user wants to deposit funds, exchange provides user-specific address
+                  where to send these funds, called <b>deposit address</b>. This address must be used
+                  consistently only for the same user, otherwise it would lead to false positives clusters. Now,
+                  whenever multiple addresses send their funds to the same deposit address, it's very likely
+                  these addresses are controlled by the same entity, how else they would know this deposit address, right?
+                  By making these assumptions, we cluster all these addresses based on used deposit address.
+                  Try by Yourself!
+                </div>
+
+                <!-- Explanatory image -->
+                <div class="col-md-4" style="margin-top: 10%;">
+                  <img src="/static/DBScheme.png" class="img-fluid rounded">
+                </div>
+                <div class="col"></div>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Footer -->
-        <footer class="py-2 mt-auto">
+        <footer class="py-2 mt-auto position-relative">
           <div class="container">
             <!-- About text and button -->
-            <div id="aboutText" class="alert alert-primary" style="width: 300px; display: none;">
+            <div id="aboutText" class="alert alert-primary position-absolute" style="width: 300px; display: none; z-index: 1000; bottom: 88%;">
               Created as part of a bachelor thesis at Brno University of Technology by <b>Tomáš Daniel</b>.
               Academic year 2024/25, supervised by Ing. Jan Zavřel.
             </div>
@@ -204,14 +394,15 @@
                 </div>
               </div>
             </div>
-
             <hr>
+
             <!-- Bottom row - contacts -->
             <div class="row justify-content-center">
               <div class="col-auto d-flex gap-3">
                 <a href="https://www.linkedin.com/in/tom%C3%A1%C5%A1-daniel-b71724197/">
                   <i class="bi bi-linkedin fs-4"></i>
                 </a>
+
                 <a href="https://github.com/Dandys3900/Ethereum-Clustering">
                   <i class="bi bi-github fs-4"></i>
                 </a>
@@ -221,122 +412,242 @@
         </footer>
     </div>
 
-    {% if resultsList == "" or resultsGraph == "" %}
+    {% if ongoingRefresh %}
+      <!-- Handle ongoing refresh -->
+      <script type="text/javascript">
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
+        // Disable all buttons
+        document.querySelectorAll("button").forEach(button => button.disabled = true);
+        // Show "Maintenance in progress" image
+        document.getElementById("refreshOn").style.display = "block";
+      </script>
+    {% else %}
+      <script type="text/javascript">
+        const secondRow = document.getElementById("secondRow");
+        // Show content of second row
+        if (secondRow.style.display === "none")
+          secondRow.style.display = "block";
+        // Re-enable all buttons
+        document.querySelectorAll("button").forEach(button => button.enabled = true);
+        // Hide "Maintenance in progress" image
+        document.getElementById("refreshOn").style.display = "none";
+      </script>
+    {% endif %}
+
+    {% if resultsGraph == "" %}
       <!-- Handle not found address -->
       <script type="text/javascript">
-        // Keep faculty logo shown
-        document.getElementById("facLogo").style.display = "block";
         // Show "No address found" image
         document.getElementById("notFoundAddr").style.display = "block";
+        // Hide content of second row
+        document.getElementById("secondRow").style.display = "none";
       </script>
-    {% elif resultsList and resultsGraph %}
+    {% elif resultsGraph %}
       <script type="text/javascript">
-        // Hide faculty logo and show count charts instead
+        // Hide faculty logo and explanatory text about used heuristics
         document.getElementById("facLogo").style.display = "none";
+        document.getElementById("howItWorksText").style.display = "none";
+        // Show toggle button
+        document.getElementById("outterBtn").style.display = "block";
 
-        //*********** List of clustered addresses ***********//
-        // Get data from Python
-        var listData = {{ resultsList | safe }};
+        // Initially create graph object
+        const canvas = document.getElementById("container");
+        // Show canvas borders by adding "card" class
+        canvas.classList.add("card");
+        // Render nodes graph
+        var addrChart = echarts.init(dom=canvas, opts={
+          renderer: "canvas"
+        });
+        addrChart.showLoading();
 
-        // Create results table
-        var table = new gridjs.Grid({
-          columns: ["Entity"],
-          data: listData.map(value => [value]),
+        // Create transactions table (will be filled with each edge data)
+        var txsTable = new gridjs.Grid({
+          columns: [
+            {
+              name : "Transaction",
+              attributes: { style: "width: 50%;" }
+            },
+            "Time",
+            "Amount",
+            {
+              name     : "Show on EtherScan🕵️",
+              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}'>Link</a></b>`)
+            }
+          ],
+          data: [],
           pagination: {
-              limit: 20
+            limit: 20
           },
           resizable: true,
           search   : true
-        }).render(document.getElementById("data_table"));
+        }).render(document.getElementById("edgeTxsBody"));
 
-        // Show export buttons
-        document.getElementById("exports").style.display = "flex";
 
         //*********** Render graph for results ***********//
+        var nodesParams = {/*Amount, Styling*/};
         // Get data from Python
         var graphData = {{ resultsGraph | safe }};
-        // Create styling for each type of no`de
+        // Create styling for each type of node
         let nodeStyles = {
-          "exchange": 12,
-          "deposit" : 10,
-          "leaf"    : 8
+          "exchange": {size: 12, color: "#6270c0"},
+          "deposit" : {size: 10, color: "#a1ca7f"},
+          "leaf"    : {size: 8,  color: "#ecc96c"},
+          "selected": {size: 14, color: ""       } // Order affects nodes color
         };
 
-        let totalEtherAmount = 0.0;
         let graph = {
-          nodes: graphData.nodes.map(node => ({
-            ...node,
-            symbolSize: nodeStyles[node.props.type],
-            name      : node.id,
-            value     : node.props,
-            exchname  : node.props.name,
-            category  : node.props.type
-          })),
-          links: graphData.edges.map(edge => {
-              // Collect sum of all transferred Ether for cluster
-              totalEtherAmount += parseFloat(edge.props.amount);
-              return {
-                  source: edge.src,
-                  target: edge.dst,
-                  amount: edge.props.amount
-              };
+          nodes: graphData.nodes.map(node => {
+            // Store node params
+            nodesParams[node.id] = {
+              amount: 0.0, // Initial value
+              style : nodeStyles[node.props.type]
+            };
+
+            return {
+              ...node,
+              nodename  : node.id,
+              exchname  : node.props.name,
+              symbolSize: nodeStyles[node.props.type].size,
+              category  : node.props.type
+            };
           }),
-          categories: ["exchange", "deposit", "leaf"].map(function (category) {
+          links: graphData.edges.map(edge => {
+            // Accumulate address Ether amount
+            nodesParams[edge.src].amount += parseFloat(edge.props.amount);
+
+            return {
+              source: edge.src,
+              target: edge.dst,
+              amount: edge.props.amount,
+              txs   : edge.props.txs
+            };
+          }),
+          categories: Object.keys(nodeStyles).map(function (category) {
             return {
               name: category
             };
           })
         };
 
-        // Display and fill result's charts
-        document.getElementById("addrCount").innerText += table.config.data.length;
-        document.getElementById("usedEther").innerText += Number(totalEtherAmount).toFixed(3);
-        document.getElementById("resCharts").style.display = "block";
-
-        // Wrap chart creation into timeout to ensure hosting element is created before chart
-        setTimeout(function () {
-          // Render nodes graph
-          var addrChart = echarts.init(dom=document.getElementById("container"), opts={
-            renderer: "canvas"
-          });
-
-          addrChart.setOption({
-            tooltip: {
-                trigger: "item",
-                formatter: function (params) {
-                    if (params.dataType === "edge")
-                      return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
-                    else // Node
-                      return `${params.data.name}\nSource name: ${params.data.exchname}`;
-                }
-            },
-            legend: [{
-              data: ["exchange", "deposit", "leaf"]
-            }],
-            series: [{
-              type      : "graph",
-              layout    : "force",
-              data      : graph.nodes,
-              links     : graph.links,
-              categories: graph.categories,
-              roam      : true,
-              label: {
-                position: "right"
-              },
-              force: {
-                repulsion: 0,
-                friction : 0,
-                gravity  : 0
-              },
-              lineStyle: {
-                color: "source"
+        // Set chart's options
+        addrChart.setOption({
+          tooltip: {
+              trigger: "item",
+              formatter: function (params) {
+                if (params.dataType === "edge") // Edge
+                  return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
+                else // Node
+                  return `${params.data.nodename} | Source name: ${params.data.exchname}`;
               }
-            }]
+          },
+          legend: [{
+            data: Object.keys(nodeStyles)
+          }],
+          toolbox: {
+            feature: {
+              restore: {
+                show: true,
+                title: "Re-create"
+              },
+              saveAsImage: {
+                show: true
+              }
+            }
+          },
+          series: [{
+            type      : "graph",
+            layout    : "force",
+            data      : graph.nodes,
+            links     : graph.links,
+            categories: graph.categories,
+            roam      : true,
+            zoom      : 1,
+            center: ['50%', '50%'],
+            force: {
+              repulsion: 0,
+              friction : 0,
+              gravity  : 0
+            },
+            lineStyle: {
+              color: "source"
+            },
+            emphasis: {
+              focus: "adjacency",
+              lineStyle: {
+                width: 10
+              }
+            },
+            edgeSymbol: ["none", "arrow"],
+          }]
+        });
+
+        // Add listener for web-page resize events
+        window.addEventListener("resize", addrChart.resize);
+        // Add listener for edge clicks
+        addrChart.on("click", function (params) {
+          if (params.dataType === "edge" && params.data.txs) {
+            // Update table data
+            txsTable.updateConfig({
+              data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
+                params.data.txs.split(";").filter(Boolean).map(value => {
+                  return [...value.split(","), null];
+                })
+            }).forceRender();
+
+            // Show modal
+            (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
+          }
+        });
+
+        //*********** List of clustered addresses ***********//
+        // List of selected addresses in graph
+        var selectedNodes = new Set();
+        // Initially add user entered address
+        var userAddr = "{{ targetAddr }}";
+        selectedNodes.add(userAddr);
+
+        // Create results table
+        var table = new gridjs.Grid({
+          columns: ["Entity"],
+          data: Object.keys(nodesParams).map(value => [
+            gridjs.html(`
+              <span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
+              ${value}
+            `)
+          ]),
+          pagination: {
+            limit: 20
+          },
+          resizable: true,
+          search   : true
+        }).render(document.getElementById("dataTable"))
+          .on("rowClick", (record) => {
+            // Extract selected address
+            const entity = record.srcElement.innerText.trim();
+            // Toggle node out/in selected ones
+            setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
           });
 
-          // Add listener for web-page resize events
-          window.addEventListener("resize", addrChart.resize);
-        }, 100);
+        // Display and fill result's charts
+        document.getElementById("resCharts").style.display = "block";
+        setHighlightResultsTableItem(userAddr);
+
+        // Resolve absence of "search" event in grid.js
+        // Add global listener for input events and select ones related to table search element
+        document.addEventListener("input", event => {
+          if (event.target.matches(".gridjs-search input")) {
+            selectedNodes.clear();
+            let query = event.target.value.toUpperCase();
+
+            setTimeout(() => {
+              // When empty string -> search ended and clear highlights
+              setHighlightResultsTableItem(query, ((query) ? true : false));
+            }, 50);
+          }
+        });
+
+        addrChart.hideLoading();
       </script>
     {% endif %}
   </body>

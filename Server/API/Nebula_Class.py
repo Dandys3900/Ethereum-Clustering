@@ -60,7 +60,7 @@ class NebulaAPI(BaseAPI):
 
         if not (noChangeMade := self.objectExists("linked_to", "EDGES")):
             Out.warning("Creating needed edge(s)")
-            self.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0)')
+            self.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0, txs string DEFAULT "")')
 
         # Ensure new objects are properly made
         if not noChangeMade:
@@ -68,7 +68,7 @@ class NebulaAPI(BaseAPI):
             Out.success(f"All needed components created succesfully")
 
     # Handles adding new node to graph
-    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", amount=0.0):
+    async def addNodeToGraph(self, addr="", addrName="", parentAddr="", nodeType="", txParams="", amount=0.0):
         print(f"Adding type: {nodeType} ; name: {addrName} ; {addr}")
         # Add node (vertex) to graph
         self.ExecNebulaCommand(
@@ -77,18 +77,21 @@ class NebulaAPI(BaseAPI):
         # Parent address is given so create a path to it
         if parentAddr != "":
             self.ExecNebulaCommand(
-                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}'
+                f'UPSERT EDGE on linked_to "{addr}"->"{parentAddr}" SET amount = amount + {amount}, txs = txs + "{txParams}"'
             )
 
     # Helper to catch eventual execution errors
     def ExecNebulaCommand(self, command=""):
-        # Ensure we have valid session
-        assert self.session
-        resp = self.session.execute(command)
-        # Check for execution errors
-        assert resp.is_succeeded(), resp.error_msg()
-        # Return result (required in some use-cases)
-        return resp
+        try:
+            # Ensure we have valid session
+            assert self.session
+            resp = self.session.execute(command)
+            # Check for execution errors
+            assert resp.is_succeeded(), resp.error_msg()
+            # Return result (required in some use-cases)
+            return resp
+        except Exception as e:
+            Out.error(f"ExecNebulaCommand(): {e}")
 
     def toArrayTransform(self, result, pivot):
         if result.is_empty():

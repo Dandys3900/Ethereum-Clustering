@@ -20,14 +20,17 @@ class HeuristicsClass():
         # Make sure space is created
         self.nebula.createSpace(self.targetSpace)
 
+    def getExchangeCount(self):
+        return len(self.exchAddrs)
+
     # Setter for Nebula space (used by unitests)
     def setNebulaSpace(self, newSpace=""):
         self.targetSpace = newSpace
 
     async def addExchanges(self, scope):
-        exchanges = list(self.exchAddrs.items())
-        # Limit amount of processed addrs by given scope
-        exchanges = exchanges[:int(len(exchanges) * (scope / 100))]
+        # Limit amount of processed exchange addrs by given scope
+        exchAddrs = list(self.exchAddrs.items())[:int(self.getExchangeCount() * (scope / 100))]
+
         # Add all exchanges to graph
         await self.api.runParalel([
             partial(
@@ -35,14 +38,12 @@ class HeuristicsClass():
                 addr     = dexAddr,
                 addrName = dexName,
                 nodeType = "exchange"
-            ) for dexAddr, dexName in exchanges
+            ) for dexAddr, dexName in exchAddrs
         ])
 
     async def addDepositAddrs(self):
         # Get all found deposit addresses
         exchAddrs = self.nebula.getAddrsOfType("exchange")
-        # Store all known exchanges to exclude them as deposit addresses
-        self.api.setExchangeAddrs(exchAddrs)
 
         # Create session for async requests
         async with ClientSession() as trezor_session:
@@ -103,19 +104,14 @@ class HeuristicsClass():
         # Use defined space
         self.nebula.ExecNebulaCommand(f'USE {self.targetSpace}')
 
-        # Try and check if any known leaf matches this address
-        if targetAddr not in self.nebula.getAddrsOfType("leaf"):
-            Out.error(f"Given (leaf) address {targetAddr} not found in any cluster")
-            # resultsList, resultsGraph
-            return "", ""
+        try: # Find deposit address(es) of target address
+            targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
+                f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
+            ), "id(deposit)")
+        except Exception:
+            return ""
 
-        # Find deposit address(es) of target address
-        targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-            f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" RETURN id(deposit)'
-        ), "id(deposit)")
-
-        subGraphdata    = ""
-        clustrAddrsList = ""
+        subGraphdata = ""
         # Iterate over all found deposit addresses
         for depoAddr in targetAddrDepo:
             # Construct data for subgraph containing these addresses
@@ -123,11 +119,6 @@ class HeuristicsClass():
                 f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{depoAddr}" YIELD VERTICES AS nodes, EDGES AS links'
             ).dict_for_vis(), indent=2, sort_keys=True)
 
-            # Find all leaf addresses with same deposit address
-            clustrAddrsList += json.dumps(self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
-                f'MATCH (leaf:address)-->(deposit:address) WHERE id(deposit) == "{depoAddr}" AND leaf.address.type == "leaf" RETURN id(leaf)'
-            ), "id(leaf)"), indent=2)
-
         # Return prepared data
-        return clustrAddrsList, subGraphdata
+        return subGraphdata
 # End of HeuristicsClass class
