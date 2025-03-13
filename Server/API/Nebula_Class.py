@@ -43,7 +43,7 @@ class NebulaAPI(BaseAPI):
         # Create new space
         if not self.objectExists(spaceName, "SPACES"):
             Out.warning(f"Creating new space: {spaceName}")
-            self.ExecNebulaCommand(f'CREATE SPACE IF NOT EXISTS {spaceName} (partition_num=10, replica_factor=1, vid_type=FIXED_STRING(42))')
+            self.ExecNebulaCommand(f'CREATE SPACE {spaceName} (partition_num=10, replica_factor=1, vid_type=FIXED_STRING(42))')
             # Wait 20s to make sure space is created properly
             time.sleep(20)
             Out.success(f"Space {spaceName} created succesfully")
@@ -52,18 +52,18 @@ class NebulaAPI(BaseAPI):
         self.ExecNebulaCommand(f'USE {spaceName}')
 
         # Create necessary index, tags and edges
-        if not (noChangeMade := self.objectExists("address", "TAGS")):
+        if not (skipChange := self.objectExists("address", "TAGS")):
             Out.warning("Creating needed tag(s)")
-            self.ExecNebulaCommand('CREATE TAG IF NOT EXISTS address(name string, type string)')
+            self.ExecNebulaCommand('CREATE TAG address(name string, type string)')
             Out.warning("Creating needed index(s)")
-            self.ExecNebulaCommand('CREATE TAG INDEX IF NOT EXISTS addrs_index ON address(type(10))')
+            self.ExecNebulaCommand('CREATE TAG INDEX addrs_index ON address(type(10))')
 
-        if not (noChangeMade := self.objectExists("linked_to", "EDGES")):
+        if not (skipChange := self.objectExists("linked_to", "EDGES")):
             Out.warning("Creating needed edge(s)")
-            self.ExecNebulaCommand('CREATE EDGE IF NOT EXISTS linked_to(amount float DEFAULT 0.0, txs string DEFAULT "")')
+            self.ExecNebulaCommand('CREATE EDGE linked_to(amount float DEFAULT 0.0, txs string DEFAULT "")')
 
         # Ensure new objects are properly made
-        if not noChangeMade:
+        if not skipChange:
             time.sleep(20)
             Out.success(f"All needed components created succesfully")
 

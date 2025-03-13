@@ -17,6 +17,8 @@
     <!-- GridJS -->
     <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
+    <!-- CryptoJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 
@@ -61,18 +63,27 @@
         text.style.display = (text.style.display === "none") ? "block" : "none";
       }
 
+      function showElement(elementId) {
+        document.getElementById(elementId).style.display = "block";
+      }
+
+      function hideElement(elementId) {
+        document.getElementById(elementId).style.display = "none";
+      }
+
       async function submitRefreshRequest(event) {
         event.preventDefault();
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
         // Make sure to hide "No address found"
-        document.getElementById("notFoundAddr").style.display = "block";
+        hideElement("notFoundAddr");
         // Show spinner
-        document.getElementById("loadSpinner").style.display = "block";
+        showElement("loadSpinner");
 
         // Create form and append extracted value to it
         const formData = new FormData();
         formData.append("scope", document.getElementById("refeshScope").value);
+        formData.append("pwd",   CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
 
         await fetch("/refreshDB", {
           method: "POST",
@@ -80,9 +91,7 @@
         });
 
         // Hide spinner
-        document.getElementById("loadSpinner").style.display = "none";
-        // Clear URL afterwards
-        window.history.replaceState({}, "", "/");
+        hideElement("loadSpinner");
       }
 
       function exportJSON() {
@@ -201,6 +210,10 @@
         });
       }
 
+      function toggleProceedBtn(pwdValue) {
+        document.getElementById("proceedBtn").disabled = (pwdValue === "");
+      }
+
       document.addEventListener("DOMContentLoaded", function() {
         const element = document.getElementById("takeMeHome");
         // If not on home page, show "Home" button
@@ -304,8 +317,11 @@
                 </div>
 
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
-                  <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)">Proceed</button>
+                  <form id="refreshModalForm" class="d-flex gap-1">
+                    <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
+                    <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" disabled>Proceed</button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -328,9 +344,11 @@
 
         <!-- Second row: Results table + graph -->
         <div id="secondRow" class="row flex-grow-1">
-          <button id="outterBtn" class="btn btn-warning" style="display: none; width: fit-content; height: fit-content;" onclick="triggerLeftRow('outterBtn')">
-            <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
-          </button>
+          <div id="outterBtn" class="col-auto pe-0" style="display: none;">
+            <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
+              <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+            </button>
+          </div>
 
           <!-- Results table -->
           <div id="results" class="col-md-3" style="display: none;">
@@ -416,22 +434,20 @@
       <!-- Handle ongoing refresh -->
       <script type="text/javascript">
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
         // Disable all buttons
         document.querySelectorAll("button").forEach(button => button.disabled = true);
         // Show "Maintenance in progress" image
-        document.getElementById("refreshOn").style.display = "block";
+        showElement("refreshOn");
       </script>
     {% else %}
       <script type="text/javascript">
-        const secondRow = document.getElementById("secondRow");
         // Show content of second row
-        if (secondRow.style.display === "none")
-          secondRow.style.display = "block";
+        showElement("secondRow");
         // Re-enable all buttons
         document.querySelectorAll("button").forEach(button => button.enabled = true);
         // Hide "Maintenance in progress" image
-        document.getElementById("refreshOn").style.display = "none";
+        hideElement("refreshOn");
       </script>
     {% endif %}
 
@@ -439,17 +455,17 @@
       <!-- Handle not found address -->
       <script type="text/javascript">
         // Show "No address found" image
-        document.getElementById("notFoundAddr").style.display = "block";
+        showElement("notFoundAddr");
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
       </script>
     {% elif resultsGraph %}
       <script type="text/javascript">
         // Hide faculty logo and explanatory text about used heuristics
-        document.getElementById("facLogo").style.display = "none";
-        document.getElementById("howItWorksText").style.display = "none";
+        hideElement("facLogo");
+        hideElement("howItWorksText");
         // Show toggle button
-        document.getElementById("outterBtn").style.display = "block";
+        showElement("outterBtn");
 
         // Initially create graph object
         const canvas = document.getElementById("container");
@@ -557,11 +573,12 @@
           },
           series: [{
             type      : "graph",
-            layout    : "force",
+            layout    : "circular", // force
             data      : graph.nodes,
             links     : graph.links,
             categories: graph.categories,
             roam      : true,
+            draggable : true,
             zoom      : 1,
             center: ['50%', '50%'],
             force: {
@@ -630,7 +647,7 @@
           });
 
         // Display and fill result's charts
-        document.getElementById("resCharts").style.display = "block";
+        showElement("resCharts");
         setHighlightResultsTableItem(userAddr);
 
         // Resolve absence of "search" event in grid.js

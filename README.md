@@ -12,7 +12,7 @@ Few addresses known to produce interesting graphs:
 To build image of THIS PROJECT ONLY stuff, run:
 `docker build -t eth_server .`
 `docker save -o bp_app.tar eth_server:latest`
-`docker load -i eth_server.tar`
+`docker load -i bp_app.tar`
 
 Before following, make sure Docker Desktop is ON and it's Nebula extension container is PAUSED.
 

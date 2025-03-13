@@ -52,9 +52,11 @@ class ServerHandler():
                 # Also extract transaction ID and epoch time
                 txID   = str(tx.get("txid"))
                 txTime = datetime.fromtimestamp(float(tx.get("blockTime"))).strftime("%Y-%m-%d | %H:%M:%S")
+                # Determine if EOA transaction
+                eoaTx = (tx.get("ethereumSpecific").get("data") == "0x")
 
-                # Transaction contain target address and direction is TO target address
-                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                # Transaction contain target address, direction is TO target address and is EOA-type
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr and eoaTx:
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
                         addr       = txFROMAddr,
