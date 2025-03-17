@@ -55,8 +55,12 @@ class ServerHandler():
                 # Determine if EOA transaction
                 eoaTx = (tx.get("ethereumSpecific").get("data") == "0x")
 
-                # Transaction contain target address, direction is TO target address and is EOA-type
-                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr and eoaTx:
+                # Transaction contain target address with direction is TO target address
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                    # Exclude non-EOA leaf addresses
+                    if nodeType == "leaf" and not eoaTx:
+                        return
+
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
                         addr       = txFROMAddr,

@@ -34,7 +34,7 @@ class NebulaAPI(BaseAPI):
     # Check if given Nebula object (space, index, edge) already exists
     def objectExists(self, assertName, objName):
         result = self.ExecNebulaCommand(f'SHOW {objName}')
-        if not result.is_empty():
+        if result and not result.is_empty():
             return assertName in [val.as_string() for val in result.column_values("Name")]
         return False
 
