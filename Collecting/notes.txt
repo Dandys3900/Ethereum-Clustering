@@ -1,0 +1,25 @@
+glances --export csv --export-csv-file ./file.csv
+
+begin time pro 1procento: 21:41:49
+
+jinak ty vykyvy jsou od timeoutu, 3krat a dost
+
+POCTY:
+    EXCHANGE: 4
+    DEPOSIT: 13491
+    LEAF: 77412
+
+NETWORK:
+PRO br-XXX
+eth0.bytes_recv
+eth0.bytes_sent
+eth0.bytes_recv_rate_per_sec
+eth0.bytes_recv_rate_per_sec
+
+CPU:
+cpu_user
+(cpu_system)
+
+DISK:
+/.size
+/.used
