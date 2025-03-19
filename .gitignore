@@ -2,6 +2,7 @@
 addresses.csv
 DEXAddr/
 virtenv/
+plotenv/
 __pycache__
 .pytest_cache
 data
