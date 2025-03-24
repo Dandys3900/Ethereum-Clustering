@@ -23,3 +23,6 @@ or without triggering build sequence
 
 To transfer docker image to Anton
 `scp -i ~/.ssh/id_ed25519 -P 25021 bp_app.tar xdanie14@anton4.fit.vutbr.cz:/home/xdanie14/project`
+
+To monitor system during clustering
+`glances --export csv --export-csv-file usage_log.csv --disable-plugin percpu`

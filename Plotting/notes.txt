@@ -23,3 +23,11 @@ cpu_user
 DISK:
 /.size
 /.used
+
+PRO 100%
+disk pred:
+$ df -h
+Filesystem              Size  Used Avail Use% Mounted on
+zfs/subvol-5021-disk-0  1.0T  3.5G 1021G   1% /
+
+begin time: 23.03.2025 22:59:00

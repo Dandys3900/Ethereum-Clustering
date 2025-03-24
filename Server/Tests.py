@@ -8,19 +8,14 @@ from fastapi.testclient import TestClient
 
 class TestsClass():
     def __init__(self):
-        self.heuristics = HeuristicsClass()
-        # Init Nebula to interact with database
-        self.nebula = NebulaAPI()
-        # Make sure space is created
-        self.nebula.createSpace("MockSpace")
+        self.heuristics = HeuristicsClass(targetSpace="MockSpace")
+        # Set Nebula to interact with database
+        self.nebula = self.heuristics.nebula
 
     # Performs clearance of address database
-    def recreateDB(self):
+    def clearMockDB(self):
         # Clear existing data
         self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS MockSpace')
-
-        # Use defined space
-        self.nebula.ExecNebulaCommand('USE MockSpace')
 
     # Fill database with test data
     async def fillDB(self):
@@ -75,11 +70,9 @@ class TestsClass():
 async def test_SearchEndpoint():
     testHelper = TestsClass()
     # Clear test space on NebulaGraph
-    testHelper.recreateDB()
+    testHelper.clearMockDB()
     # Fill test space with test data
     await testHelper.fillDB()
-    # Switch to Nebula test space
-    heuristics.setNebulaSpace("MockSpace")
 
     with TestClient(app) as mc:
         # First, get leafs for first deposit address cluster

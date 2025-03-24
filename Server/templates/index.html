@@ -64,13 +64,11 @@
       }
 
       function showElement(elementId) {
-        const element = document.getElementById(elementId).style.display;
-        element = ((element === "none") ? "block" : element);
+        document.getElementById(elementId).style.display = "block";
       }
 
       function hideElement(elementId) {
-        const element = document.getElementById(elementId).style.display;
-        element = ((element === "block") ? "none" : element);
+        document.getElementById(elementId).style.display = "none";
       }
 
       async function submitRefreshRequest(event) {
@@ -87,13 +85,18 @@
         formData.append("scope", document.getElementById("refeshScope").value);
         formData.append("pwd",   CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
 
-        await fetch("/refreshDB", {
+        const response = await fetch("/refreshDB", {
           method: "POST",
           body  : formData
         });
 
         // Hide spinner
         hideElement("loadSpinner");
+        // Re-shown second row
+        showElement("secondRow");
+        // Notify user about invalid password provided
+        if (!response.ok)
+          showElement("wrongPwdText");
       }
 
       function exportJSON() {
@@ -279,6 +282,12 @@
             <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
               <img src="/static/maintenanceOn.png" class="img-fluid">
             </div>
+
+            <!-- Wrong password text alert -->
+            <div id="wrongPwdText" class="alert alert-danger fade show" style="display:none; width: fit-content;">
+              <strong>Invalid password provided, try again please...</strong>
+              <button type="button" class="btn-close" onclick="hideElement('wrongPwdText')"></button>
+            </div>
           </div>
 
           <!-- Menu -->
@@ -291,23 +300,37 @@
             <div class="d-flex justify-content-end position-relative mt-2">
               <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
                 {% set values = syncDate.split(";") %}
-                <div><b>Highest block: </b>{{ values[0] }}</div>
-                <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                {% set trezorUp = (syncDate != ";") %}
+
+                <div>Blockchain client:</div>
+                {% if trezorUp %}
+                  <div><b>Highest block: </b>{{ values[0] }}</div>
+                  <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                {% else %}
+                  <div style="color: red;">Client unavailable</div>
+                {% endif %}
                 <hr>
 
-                {% if syncDate == ";" %}
-                <script type="text/javascript">
-                  // If unable to parse syncDate values, blockbook is probably down, avoid DB refresh
-                  document.getElementById("doDBrefreshBtn").disabled = true;
-                </script>
-                {% endif %}
+                <div>Clustered addresses counts:</div>
+                <div><b>Exchanges: </b>{{ addrsCount.exchanges }}</div>
+                <div><b>Deposits: </b>{{ addrsCount.deposits }}</div>
+                <div><b>Leafs: </b>{{ addrsCount.leafs }}</div>
+                <hr>
 
                 <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
                 <br>
                 {% set defCount = (exchLen / 2) | int %}
                 <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
                 <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
-                <button type="button" class="btn btn-danger" id="doDBrefreshBtn" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh Database</button>
+                <button type="button" class="btn btn-danger" id="doDBrefreshBtn" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh database</button>
+
+                {% if not trezorUp %}
+                  <div><b>Cannot refresh database</b></div>
+                  <script type="text/javascript">
+                    // If unable to parse syncDate values, blockbook is probably down, avoid DB refresh
+                    document.getElementById("doDBrefreshBtn").disabled = true;
+                  </script>
+                {% endif %}
               </div>
             </div>
           </div>
@@ -451,8 +474,9 @@
       </script>
     {% else %}
       <script type="text/javascript">
-        // Show content of second row
-        showElement("secondRow");
+        // Show content of second row (if not already shown)
+        if (document.getElementById("secondRow").style.display === "none")
+          showElement("secondRow");
         // Re-enable all buttons
         document.querySelectorAll("button").forEach(button => button.enabled = true);
         // Hide "Maintenance in progress" image

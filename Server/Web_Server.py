@@ -1,14 +1,14 @@
 # Imports
 import os
 import hashlib
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from dotenv import load_dotenv
 from Server import HeuristicsClass
-from .API import TrezorAPI
+from .API import TrezorAPI, NebulaAPI
 
 # Load env variables
 load_dotenv()
@@ -29,6 +29,8 @@ templates = Jinja2Templates(directory="Server/templates")
 heuristics = HeuristicsClass()
 # Create Trezor class instance
 trezor = TrezorAPI()
+# Create NebulaGraph class instance
+nebula = NebulaAPI()
 # Flag to determine if refresh is on/off
 ongoingRefresh = False
 
@@ -38,7 +40,12 @@ async def getContext():
     return {
         "syncDate"       : await trezor.getCurrentSyncDate(),
         "exchLen"        : heuristics.getExchangeCount(),
-        "ongoingRefresh" : ongoingRefresh
+        "ongoingRefresh" : ongoingRefresh,
+        "addrsCount"     : {
+            "exchanges" : nebula.getAddrsOfType("exchange", "COUNT(v)")[0],
+            "deposits"  : nebula.getAddrsOfType("deposit",  "COUNT(v)")[0],
+            "leafs"     : nebula.getAddrsOfType("leaf",     "COUNT(v)")[0]
+        }
     }
 
 # Home page
@@ -57,8 +64,11 @@ async def refreshDB(request: Request, scope: int = Form(...), pwd: str = Form(..
 
     # Check for valid refresh password
     correctPwd = (hashlib.sha512(DB_REFRESH_PWD.encode("utf-8")).hexdigest() == pwd)
+    # Raise exception to notify client
+    if not correctPwd:
+        raise HTTPException(status_code=401, detail="Invalid password")
 
-    if not ongoingRefresh and correctPwd:
+    if not ongoingRefresh:
         ongoingRefresh = True
         # Trigger refresh with given scope
         await heuristics.updateAddrsDB(scope=scope)

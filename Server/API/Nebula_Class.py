@@ -6,13 +6,15 @@ from nebula3.Config import Config
 
 # Class handling interaction with NebulaGraph
 class NebulaAPI(BaseAPI):
-    def __init__(self, file="configFile.yaml"):
+    def __init__(self, file="configFile.yaml", targetSpace="EthereumClustering"):
         # Open config file
         self.conf = yaml.safe_load(self.openConfigFile(file))["nebula"]
         # Init parent class
         super().__init__()
         # Create Nebula session
-        self.session = self.getNebulaPool().get_session('root', 'nebula')
+        self.session = self.getNebulaPool().get_session("root", "nebula")
+        # Make sure target space is created
+        self.createSpace(targetSpace)
         # Ensure cleanup at exit
         atexit.register(self.session.release)
         atexit.register(self.getNebulaPool().close)
@@ -40,15 +42,18 @@ class NebulaAPI(BaseAPI):
 
     # Ensures all spaces are already present
     def createSpace(self, spaceName=""):
-        # Create new space
-        if not self.objectExists(spaceName, "SPACES"):
+        if self.objectExists(spaceName, "SPACES"):
+            # Space exists
+            Out.blank(f"Space: {spaceName} already exists")
+        else:
+            # Create new space
             Out.warning(f"Creating new space: {spaceName}")
             self.ExecNebulaCommand(f'CREATE SPACE {spaceName} (partition_num=10, replica_factor=1, vid_type=FIXED_STRING(42))')
             # Wait 20s to make sure space is created properly
             time.sleep(20)
             Out.success(f"Space {spaceName} created succesfully")
 
-        # Use defined space
+        # Use created space
         self.ExecNebulaCommand(f'USE {spaceName}')
 
         # Create necessary index, tags and edges
@@ -94,10 +99,10 @@ class NebulaAPI(BaseAPI):
             Out.error(f"ExecNebulaCommand(): {e}")
 
     def toArrayTransform(self, result, pivot):
-        if result.is_empty():
+        if not result or result.is_empty():
             return []
         # Create list and return it
-        return [val.as_string() for val in result.column_values(pivot)]
+        return [val.cast_primitive() for val in result.column_values(pivot)]
 
     def getAddrsOfType(self, addrType="", targetParam="id(v)"):
         # Make query to get all addresses of given type

@@ -5,27 +5,20 @@ from aiohttp import ClientSession
 from Helpers import Out
 from .Data_Handler import ServerHandler, partial
 from .API import NebulaAPI
+from datetime import datetime
 
 class HeuristicsClass():
-    def __init__(self):
+    def __init__(self, targetSpace="EthereumClustering"):
         # Load list of all known exchange addresses
         with open("exchanges.json", "r", encoding="utf-8") as file:
             self.exchAddrs = json.load(file)
         # Init Nebula to interact with database
-        self.nebula = NebulaAPI()
+        self.nebula = NebulaAPI(targetSpace=targetSpace)
         # Init ServerData_Handler for communicating with blockchain client
         self.api = ServerHandler(self.nebula)
-        # Set default (production) Nebula space
-        self.targetSpace = "EthereumClustering"
-        # Make sure space is created
-        self.nebula.createSpace(self.targetSpace)
 
     def getExchangeCount(self):
         return len(self.exchAddrs)
-
-    # Setter for Nebula space (used by unitests)
-    def setNebulaSpace(self, newSpace=""):
-        self.targetSpace = newSpace
 
     async def addExchanges(self, scope):
         # Limit amount of processed exchange addrs by given scope
@@ -86,9 +79,6 @@ class HeuristicsClass():
         # Clear existing data
         self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
-        # Use defined space
-        self.nebula.ExecNebulaCommand('USE EthereumClustering')
-
         # Execute pipeline to construct graph
         await self.addExchanges(scope)
         await self.addDepositAddrs()
@@ -98,17 +88,19 @@ class HeuristicsClass():
         self.nebula.ExecNebulaCommand('REBUILD TAG INDEX addrs_index')
         Out.success("Refresh of DB was succesful")
 
+        with open("refreshend.txt", "w", encoding="utf-8") as file:
+            file.write(f"Current Date and Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
+
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):
         targetAddr = targetAddr.upper()
-        # Use defined space
-        self.nebula.ExecNebulaCommand(f'USE {self.targetSpace}')
 
         try: # Find deposit address(es) of target address
             targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
                 f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
             ), "id(deposit)")
         except Exception:
+            Out.error(f"Provided address is unknown or not leaf: {targetAddr}")
             return ""
 
         subGraphdata = ""

@@ -27,23 +27,17 @@ class ServerHandler():
         return await asyncio.gather(*tasks)
 
     # From given transactions, extract addresses
-    # NOTE: Store opposite address to found one in transaction
+    # Store opposite address to found one in transaction
     async def getTxAddrs(self, session=None, addr="", addrName="", parentAddr="", nodeType="", page=1):
         # To ensure address consistency, capitalize them
         addr = addr.upper()
-
-        apiResponse = await (self.trezor.get(session, f"v2/address/{addr}", params={
+        params = {
             "page"    : page,
             "details" : "txslight"
-        }))
-        # Check if valid server response
-        if not apiResponse or apiResponse.get("transactions", {}) == {}:
-            return
+        }
 
-        # Get list of transactions
-        apiResponse = apiResponse.get("transactions")
         # Iterate over received transaction records
-        for tx in apiResponse:
+        async for tx in (self.trezor.getAddrTxs(session, f"v2/address/{addr}", params=params)):
             try:
                 txFROMAddr = str(tx.get("vin")[0].get("addresses")[0]).upper()
                 txTOAddr   = str(tx.get("vout")[0].get("addresses")[0]).upper()
