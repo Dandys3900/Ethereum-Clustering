@@ -37,6 +37,8 @@ class HeuristicsClass():
     async def addDepositAddrs(self):
         # Get all found deposit addresses
         exchAddrs = self.nebula.getAddrsOfType("exchange")
+        # Update check-against list before searching for deposit addrs
+        self.api.updateExchAddrs(self.exchAddrs)
 
         # Create session for async requests
         async with ClientSession() as trezor_session:
@@ -55,6 +57,8 @@ class HeuristicsClass():
     async def addClusteredAddrs(self):
         # Get all found deposit addresses
         exchDepos = self.nebula.getAddrsOfType("deposit")
+        # Update check-against list before searching for leaf addrs
+        self.api.updateDepoAddrsList(exchDepos)
         # Store (parent) names of deposit addresses
         deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
 

@@ -16,10 +16,19 @@ class ServerHandler():
             self.trezor = TrezorAPI()
             # Store Nebula class instance
             self.nebula = nebulaAPI
+            # Lists of addresses
+            self.knownDepos = []
+            self.knownExchs = []
         except Exception as e:
             Out.error(e)
             # Exit on API error
             exit(-1)
+
+    def updateExchAddrs(self, value):
+        self.knownExchs = value
+
+    def updateDepoAddrsList(self, value):
+        self.knownDepos = value
 
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
@@ -51,9 +60,14 @@ class ServerHandler():
 
                 # Transaction contain target address with direction is TO target address
                 if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
-                    # Exclude non-EOA leaf addresses
-                    if nodeType == "leaf" and not eoaTx:
+                    # Exclude exchange addresses as deposit ones
+                    if nodeType == "deposit" and txFROMAddr in self.knownExchs:
                         return
+                    if nodeType == "leaf":
+                        # Exclude non-EOA leaf addresses
+                        # Exclude deposit addresses as leaf ones (if happens deposits transfer between each other, not valid)
+                        if not eoaTx or txFROMAddr in self.knownDepos:
+                            return
 
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
