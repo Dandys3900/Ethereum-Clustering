@@ -32,7 +32,7 @@ class ServerHandler():
 
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
-        tasks = [func() for func in funcsList]
+        tasks = [asyncio.create_task(func()) for func in funcsList]
         return await asyncio.gather(*tasks)
 
     # From given transactions, extract addresses
@@ -44,10 +44,19 @@ class ServerHandler():
             "page"    : page,
             "details" : "txslight"
         }
+        # Prepare queue for results
+        txQueue = asyncio.Queue()
+        creator = asyncio.create_task(
+            self.trezor.getJSONStream(session, f"v2/address/{addr}", params=params, queue=txQueue)
+        )
 
-        # Iterate over received transaction records
-        async for tx in (self.trezor.getAddrTxs(session, f"v2/address/{addr}", params=params)):
+        # Iterate over received transaction records (max 1000 txs)
+        for _ in range(0, 1000):
             try:
+                tx = await txQueue.get()
+                if tx is None:
+                    break
+
                 txFROMAddr = str(tx.get("vin")[0].get("addresses")[0]).upper()
                 txTOAddr   = str(tx.get("vout")[0].get("addresses")[0]).upper()
                 # Convert from Wei -> Ether
@@ -60,14 +69,14 @@ class ServerHandler():
 
                 # Transaction contain target address with direction is TO target address
                 if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
-                    # Exclude exchange addresses as deposit ones
-                    if nodeType == "deposit" and txFROMAddr in self.knownExchs:
-                        return
+                    # Exclude known exchange addresses
+                    if txFROMAddr in self.knownExchs:
+                        continue
                     if nodeType == "leaf":
                         # Exclude non-EOA leaf addresses
                         # Exclude deposit addresses as leaf ones (if happens deposits transfer between each other, not valid)
                         if not eoaTx or txFROMAddr in self.knownDepos:
-                            return
+                            continue
 
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
@@ -80,20 +89,23 @@ class ServerHandler():
                         amount     = txAmount
                     )
             except Exception as e:
-                Out.error(f"getTxAddrs() error: {e}")
+                Out.error(f"getTxAddrs(): {e}")
                 continue
+            finally:
+                # Mark item as done
+                txQueue.task_done()
+        await creator
 
     # Collects all addresses targetAddr has any transactions with
     async def getLinkedAddrs(self, session=None, targetAddr="", targetName="", parentAddr="", nodeType=""):
-        retVal = await self.trezor.get(session, f"v2/address/{targetAddr}", params={
+        # Get total number of pages of transaction for target address
+        totalPages = await self.trezor.getJSONStream(session, f"v2/address/{targetAddr}", key="totalPages", params={
             "details" : "txslight"
         })
         # Check if valid server response
-        if not retVal or not retVal.get("totalPages"):
+        if not totalPages:
             return
 
-        # Get total number of pages of transaction for target address
-        totalPages = retVal.get("totalPages")
         # Execute address collecting
         await self.runParalel([
             partial(

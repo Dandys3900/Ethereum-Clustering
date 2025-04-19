@@ -14,8 +14,13 @@ class BaseAPI():
         # Declare connection variables
         self.url     = url
         self.headers = header
-        # Set timeout for each GET request to 5mins
-        self.timeout = aiohttp.ClientTimeout(total=300)
+        # Set timeout for each GET request
+        self.timeout = aiohttp.ClientTimeout(
+            total        = 1080,
+            connect      = 120,
+            sock_connect = 120,
+            sock_read    = 780
+        )
 
     # Try to open and load config
     def openConfigFile(self, fileName=""):

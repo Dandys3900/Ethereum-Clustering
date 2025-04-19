@@ -2,8 +2,6 @@ glances --export csv --export-csv-file ./file.csv
 
 begin time pro 1procento: 21:41:49
 
-jinak ty vykyvy jsou od timeoutu, 3krat a dost
-
 POCTY:
     EXCHANGE: 4
     DEPOSIT: 13491

@@ -1,10 +1,10 @@
 # Performs clustering heuristics around target address
 # Imports
 import json
-from aiohttp import ClientSession
 from Helpers import Out
 from .Data_Handler import ServerHandler, partial
 from .API import NebulaAPI
+from .Session import SessionManager
 from datetime import datetime
 
 class HeuristicsClass():
@@ -38,10 +38,10 @@ class HeuristicsClass():
         # Get all found deposit addresses
         exchAddrs = self.nebula.getAddrsOfType("exchange")
         # Update check-against list before searching for deposit addrs
-        self.api.updateExchAddrs(self.exchAddrs)
+        self.api.updateExchAddrs(self.exchAddrs.keys())
 
         # Create session for async requests
-        async with ClientSession() as trezor_session:
+        async with SessionManager() as trezor_session:
             # Add all addresses interacting with known exchanges -> deposit addresses
             await self.api.runParalel([
                 partial(
@@ -63,7 +63,7 @@ class HeuristicsClass():
         deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
 
         # Create session for async requests
-        async with ClientSession() as trezor_session:
+        async with SessionManager() as trezor_session:
             # Add all addresses interacting with deposit addresss -> leaf addresses
             await self.api.runParalel([
                 partial(
@@ -81,7 +81,7 @@ class HeuristicsClass():
     async def updateAddrsDB(self, scope=100):
         Out.warning(f"Beginning refresh of DB with scope: {scope}")
         # Clear existing data
-        self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
+        #self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Execute pipeline to construct graph
         await self.addExchanges(scope)

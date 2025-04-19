@@ -94,9 +94,16 @@
         hideElement("loadSpinner");
         // Re-shown second row
         showElement("secondRow");
-        // Notify user about invalid password provided
-        if (!response.ok)
-          showElement("wrongPwdText");
+
+        if (!response.ok) {
+          let defaultError = "Error happened during the process";
+          // Notify user about invalid password provided
+          if (response.status === 401)
+            defaultError = "Invalid password provided, try again please...";
+          // Set alert text
+          document.getElementById("alertText").innerText = defaultError;
+          showElement("errorText");
+        }
       }
 
       function exportJSON() {
@@ -284,9 +291,9 @@
             </div>
 
             <!-- Wrong password text alert -->
-            <div id="wrongPwdText" class="alert alert-danger fade show" style="display:none; width: fit-content;">
-              <strong>Invalid password provided, try again please...</strong>
-              <button type="button" class="btn-close" onclick="hideElement('wrongPwdText')"></button>
+            <div id="errorText" class="alert alert-danger fade show" style="display:none; width: fit-content;">
+              <strong id="alertText">Invalid password provided, try again please...</strong>
+              <button type="button" class="btn-close" onclick="hideElement('errorText')"></button>
             </div>
           </div>
 
