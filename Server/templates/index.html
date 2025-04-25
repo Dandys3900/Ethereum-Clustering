@@ -382,7 +382,7 @@
         </div>
 
         <!-- Second row: Results table + graph -->
-        <div id="secondRow" class="row flex-grow-1">
+        <div id="secondRow" class="row flex-nowrap flex-grow-1">
           <div id="outterBtn" class="col-auto pe-0" style="display: none;">
             <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
               <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
@@ -692,7 +692,7 @@
 
         // Resolve absence of "search" event in grid.js
         // Add global listener for input events and select ones related to table search element
-        document.addEventListener("input", event => {
+        document.getElementById("dataTable").addEventListener("input", event => {
           if (event.target.matches(".gridjs-search input")) {
             selectedNodes.clear();
             let query = event.target.value.toUpperCase();

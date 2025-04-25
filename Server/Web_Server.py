@@ -30,7 +30,7 @@ heuristics = HeuristicsClass()
 # Create Trezor class instance
 trezor = TrezorAPI()
 # Create NebulaGraph class instance
-nebula = NebulaAPI()
+nebula = heuristics.nebula
 # Flag to determine if refresh is on/off
 ongoingRefresh = False
 

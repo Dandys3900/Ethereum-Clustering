@@ -44,16 +44,10 @@ class ServerHandler():
             "page"    : page,
             "details" : "txslight"
         }
-        # Prepare queue for results
-        txQueue = asyncio.Queue()
-        creator = asyncio.create_task(
-            self.trezor.getJSONStream(session, f"v2/address/{addr}", params=params, queue=txQueue)
-        )
 
-        # Iterate over received transaction records (max 1000 txs)
-        for _ in range(0, 1000):
+        # Iterate over received transaction records
+        async for tx in (self.trezor.get(session, f"v2/address/{addr}", params=params)):
             try:
-                tx = await txQueue.get()
                 if tx is None:
                     break
 
@@ -67,8 +61,8 @@ class ServerHandler():
                 # Determine if EOA transaction
                 eoaTx = (tx.get("ethereumSpecific").get("data") == "0x")
 
-                # Transaction contain target address with direction is TO target address
-                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                # Transaction contain target address with direction is TO target address and having send Ether > 0
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr and txAmount > 0.0:
                     # Exclude known exchange addresses
                     if txFROMAddr in self.knownExchs:
                         continue
@@ -88,20 +82,17 @@ class ServerHandler():
                         txParams   = f";{txID},{txTime},{txAmount}",
                         amount     = txAmount
                     )
+            except TypeError:
+                Out.error("getTxAddrs(): given tx object contains unexpected None values, skipping")
             except Exception as e:
                 Out.error(f"getTxAddrs(): {e}")
-                continue
-            finally:
-                # Mark item as done
-                txQueue.task_done()
-        await creator
 
     # Collects all addresses targetAddr has any transactions with
     async def getLinkedAddrs(self, session=None, targetAddr="", targetName="", parentAddr="", nodeType=""):
         # Get total number of pages of transaction for target address
-        totalPages = await self.trezor.getJSONStream(session, f"v2/address/{targetAddr}", key="totalPages", params={
+        totalPages = await anext(self.trezor.get(session, f"v2/address/{targetAddr}", key="totalPages", params={
             "details" : "txslight"
-        })
+        }))
         # Check if valid server response
         if not totalPages:
             return

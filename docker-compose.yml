@@ -1,7 +1,6 @@
 services:
   app:
     image: eth_server:latest
-    mem_limit: 15g # 15GB
     build:
       context: .
     ports:

@@ -12,6 +12,7 @@ class HeuristicsClass():
         # Load list of all known exchange addresses
         with open("exchanges.json", "r", encoding="utf-8") as file:
             self.exchAddrs = json.load(file)
+
         # Init Nebula to interact with database
         self.nebula = NebulaAPI(targetSpace=targetSpace)
         # Init ServerData_Handler for communicating with blockchain client
@@ -33,6 +34,7 @@ class HeuristicsClass():
                 nodeType = "exchange"
             ) for dexAddr, dexName in exchAddrs
         ])
+        Out.success("Adding exchanges done")
 
     async def addDepositAddrs(self):
         # Get all found deposit addresses
@@ -53,6 +55,7 @@ class HeuristicsClass():
                     nodeType   = "deposit"
                 ) for dexAddr in exchAddrs
             ])
+        Out.success("Adding deposits done")
 
     async def addClusteredAddrs(self):
         # Get all found deposit addresses
@@ -75,22 +78,23 @@ class HeuristicsClass():
                     nodeType   = "leaf"
                 ) for index, depoAddr in enumerate(exchDepos)
             ])
+        Out.success("Adding leafs done")
 
     # Performs update of addresses connected to known exchanges
     # Scope in interval <0, 100> percentage
     async def updateAddrsDB(self, scope=100):
         Out.warning(f"Beginning refresh of DB with scope: {scope}")
         # Clear existing data
-        #self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
+        self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Execute pipeline to construct graph
         await self.addExchanges(scope)
         await self.addDepositAddrs()
         await self.addClusteredAddrs()
 
-        # When done, rebuild index with new data
-        self.nebula.ExecNebulaCommand('REBUILD TAG INDEX addrs_index')
         Out.success("Refresh of DB was succesful")
+        # When done, rebuild index with new data
+        self.nebula.execNebulaCommand('REBUILD TAG INDEX addrs_index')
 
         with open("refreshend.txt", "w", encoding="utf-8") as file:
             file.write(f"Current Date and Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
@@ -100,7 +104,7 @@ class HeuristicsClass():
         targetAddr = targetAddr.upper()
 
         try: # Find deposit address(es) of target address
-            targetAddrDepo = self.nebula.toArrayTransform(self.nebula.ExecNebulaCommand(
+            targetAddrDepo = self.nebula.toArrayTransform(self.nebula.execNebulaCommand(
                 f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
             ), "id(deposit)")
         except Exception:
@@ -111,7 +115,7 @@ class HeuristicsClass():
         # Iterate over all found deposit addresses
         for depoAddr in targetAddrDepo:
             # Construct data for subgraph containing these addresses
-            subGraphdata += json.dumps(self.nebula.ExecNebulaCommand(
+            subGraphdata += json.dumps(self.nebula.execNebulaCommand(
                 f'GET SUBGRAPH WITH PROP 1 STEPS FROM "{depoAddr}" YIELD VERTICES AS nodes, EDGES AS links'
             ).dict_for_vis(), indent=2, sort_keys=True)
 

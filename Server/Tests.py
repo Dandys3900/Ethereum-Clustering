@@ -1,9 +1,8 @@
 # Class for unittests
 # Imports
 import pytest
-from .API import NebulaAPI
 from .Heuristics import HeuristicsClass
-from Server.Web_Server import app,heuristics
+from Server.Web_Server import app
 from fastapi.testclient import TestClient
 
 class TestsClass():
@@ -15,7 +14,7 @@ class TestsClass():
     # Performs clearance of address database
     def clearMockDB(self):
         # Clear existing data
-        self.nebula.ExecNebulaCommand('CLEAR SPACE IF EXISTS MockSpace')
+        self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS MockSpace')
 
     # Fill database with test data
     async def fillDB(self):
