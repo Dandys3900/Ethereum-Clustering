@@ -5,7 +5,6 @@ from Helpers import Out
 from .Data_Handler import ServerHandler, partial
 from .API import NebulaAPI
 from .Session import SessionManager
-from datetime import datetime
 
 class HeuristicsClass():
     def __init__(self, targetSpace="EthereumClustering"):
@@ -85,7 +84,7 @@ class HeuristicsClass():
     async def updateAddrsDB(self, scope=100):
         Out.warning(f"Beginning refresh of DB with scope: {scope}")
         # Clear existing data
-        self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
+        #self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Execute pipeline to construct graph
         await self.addExchanges(scope)
@@ -96,17 +95,21 @@ class HeuristicsClass():
         # When done, rebuild index with new data
         self.nebula.execNebulaCommand('REBUILD TAG INDEX addrs_index')
 
-        with open("refreshend.txt", "w", encoding="utf-8") as file:
-            file.write(f"Current Date and Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
-
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):
         targetAddr = targetAddr.upper()
 
         try: # Find deposit address(es) of target address
-            targetAddrDepo = self.nebula.toArrayTransform(self.nebula.execNebulaCommand(
-                f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
-            ), "id(deposit)")
+            # If already deposit address, skip and return graph
+            if targetAddr in self.nebula.getAddrsOfType("deposit"):
+                targetAddrDepo = [targetAddr]
+            else:
+                targetAddrDepo = self.nebula.toArrayTransform(self.nebula.execNebulaCommand(
+                    f'MATCH (leaf:address)-->(deposit:address) WHERE id(leaf) == "{targetAddr}" AND deposit.address.type == "deposit" RETURN id(deposit)'
+                ), "id(deposit)")
+
+            # Check if found anything
+            assert len(targetAddrDepo)
         except Exception:
             Out.error(f"Provided address is unknown or not leaf: {targetAddr}")
             return ""

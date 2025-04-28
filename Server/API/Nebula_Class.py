@@ -137,7 +137,7 @@ class NebulaAPI(BaseAPI):
             self.ensureConnect()
             return self.execNebulaCommand(command)
 
-    def toArrayTransform(self, result, pivot):
+    def toArrayTransform(self, result=None, pivot=""):
         if not result or result.is_empty():
             return []
         # Create list and return it

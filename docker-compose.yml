@@ -11,6 +11,11 @@ services:
       - nebula-net
     command: uvicorn Server.Web_Server:app --host 0.0.0.0 --port 8000
 
+  #########################################################################
+  ### Code below, starting this comment to end of this file, was taken from:
+  ### https://github.com/vesoft-inc/nebula-docker-compose/blob/master/docker-compose-lite.yaml
+  ### and scope of my changes was minimal or none.
+  #########################################################################
   metad0:
     image: docker.io/vesoft/nebula-metad:latest
     environment:

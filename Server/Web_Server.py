@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from dotenv import load_dotenv
 from Server import HeuristicsClass
-from .API import TrezorAPI, NebulaAPI
+from .API import TrezorAPI
 
 # Load env variables
 load_dotenv()

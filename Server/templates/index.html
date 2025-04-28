@@ -27,6 +27,7 @@
       :root {
         /* Introduce official FIT-blue color */
         --FITblue: #00ABE3;
+        --SelectedRED: #D46E6A;
       }
 
       .btn-primary {
@@ -36,13 +37,15 @@
 
       /* Change border and cursor when hovering over table's row */
       .resultsTable .gridjs-table tbody tr:hover {
-        border: 1px solid var(--FITblue);
+        border-right: 1px solid var(--SelectedRED);
+        border-left:  1px solid var(--SelectedRED);
         cursor: pointer;
       }
 
       /* Style for selected table row */
       .resultsTable .selected-row {
-        border: 1px solid var(--FITblue);
+        border-right: 1px solid var(--SelectedRED);
+        border-left:  1px solid var(--SelectedRED);
       }
     </style>
 
@@ -111,7 +114,7 @@
         downloadFile(
           "data.json",
           JSON.stringify(
-            ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)), null, 2
+            ((selectedNodes.size > 0) ? { nodes: Array.from(selectedNodes) } : { nodes: Object.keys(nodesParams) }), null, 2
           )
         );
       }
@@ -125,27 +128,48 @@
       }
 
       function downloadFile(filename, content) {
+        /**
+         * Function below, was taken from:
+         * https://flexiple.com/javascript/download-flle-using-javascript
+         * and scope of my changes was minimal or none.
+        */
         const blob = new Blob([content], { type: "text/plain" });
         const link = document.createElement("a");
+
         link.href = URL.createObjectURL(blob);
         link.download = filename;
         link.click();
       }
 
-      function copyDonateTextClipBoard() {
-        navigator.clipboard.writeText("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5")
-          .then(() => {
-            // Append it to existing element
-            const element = document.getElementById("donateText");
-            // Append success icon to text
-            element.innerHTML = "✅" + element.innerHTML;
+      function copyToClipboard(value) {
+        /**
+         * Function below, was taken from:
+         * https://stackoverflow.com/a/33928558/12801311
+         * and scope of my changes was minimal or none.
+        */
+        const element = document.createElement("textarea");
+        element.value = value;
+        // Append and select
+        document.body.appendChild(element);
+        element.select();
+        // Copy to clipboard
+        document.execCommand("copy");
+        // Remove afterwards
+        document.body.removeChild(element);
+      }
 
-            // Remove info text after 1s
-            setTimeout(() => {
-              // Set substring effectively removing added green tick icon
-              element.innerHTML = String(element.innerHTML).substring(1);
-            }, 1000);
-          });
+      function copyDonateText() {
+        copyToClipboard("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5");
+        // Append it to existing element
+        const element = document.getElementById("donateText");
+        // Append success icon to text
+        element.innerHTML = "✅" + element.innerHTML;
+
+        // Remove info text after 1s
+        setTimeout(() => {
+          // Set substring effectively removing added green tick icon
+          element.innerHTML = String(element.innerHTML).substring(1);
+        }, 1000);
       }
 
       function triggerLeftRow(whichBtn) {
@@ -173,7 +197,7 @@
 
       function setHighlightResultsTableItem(addr, highlight=true) {
         // Find it and set proper highlight class
-        document.querySelectorAll(".gridjs-tr").forEach(row => {
+        document.getElementById("dataTable").querySelectorAll(".gridjs-tr").forEach(row => {
           const value = row.innerText.trim();
 
           if (value.includes(addr)) {
@@ -447,7 +471,7 @@
 
                 <!-- Donate text -->
                 <div id="donateText" class="text-md-end mt-2">
-                  Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateTextClipBoard()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
+                  Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateText()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
                 </div>
               </div>
             </div>
@@ -528,7 +552,7 @@
             "Amount",
             {
               name     : "Show on EtherScan🕵️",
-              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}'>Link</a></b>`)
+              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}' target='_blank'>Link</a></b>`)
             }
           ],
           data: [],
@@ -539,7 +563,6 @@
           search   : true
         }).render(document.getElementById("edgeTxsBody"));
 
-
         //*********** Render graph for results ***********//
         var nodesParams = {/*Amount, Styling*/};
         // Get data from Python
@@ -549,7 +572,7 @@
           "exchange": {size: 12, color: "#6270c0"},
           "deposit" : {size: 10, color: "#a1ca7f"},
           "leaf"    : {size: 8,  color: "#ecc96c"},
-          "selected": {size: 14, color: ""       } // Order affects nodes color
+          "selected": {size: 14, color: "#d46e6a"} // Order affects nodes color
         };
 
         let graph = {
@@ -655,6 +678,10 @@
             // Show modal
             (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
           }
+          else { // Node
+            // Copy node address to clipboard
+            copyToClipboard(params.data.nodename);
+          }
         });
 
         //*********** List of clustered addresses ***********//
@@ -669,7 +696,7 @@
           columns: ["Entity"],
           data: Object.keys(nodesParams).map(value => [
             gridjs.html(`
-              <span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
+              <span style="display: inline-block; width: 12px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
               ${value}
             `)
           ]),

@@ -4,8 +4,6 @@ from .Base_Class import *
 from ..Session import SessionManager
 from dateutil import parser
 
-DEFAULT_SLEEP_TIME = 5
-
 # Class handling interaction with Trezor Blockbook API
 class TrezorAPI(BaseAPI):
     def __init__(self, file="configFile.yaml"):
@@ -34,8 +32,8 @@ class TrezorAPI(BaseAPI):
     async def get(self, session=None, endpoint="", params=None, key=None):
         # Construct target URL
         url = self.url + endpoint
-        for attempt in range(1, 4):
-            async with self.semaphore:
+        async with self.semaphore:
+            for attempt in range(1, 4):
                 try:
                     await self.sessionCreating.wait()
                     currentSession = await session.getSession()
@@ -62,14 +60,12 @@ class TrezorAPI(BaseAPI):
                         continue
                     # Block other coroutines from sending GET()
                     self.sessionCreating.clear()
-                    #await asyncio.sleep(DEFAULT_SLEEP_TIME)
                     # Re-create session
                     await session.createSession()
                     self.sessionCreating.set()
                 except (Exception, asyncio.TimeoutError, asyncio.CancelledError) as e:
                     # Output exception
                     Out.error(f"get(): {e}, remaining attemps {3 - attempt}")
-                    #await asyncio.sleep(DEFAULT_SLEEP_TIME * attempt)
         # End of stream
         yield None
 # TrezorAPI class end
