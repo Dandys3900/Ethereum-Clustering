@@ -49,6 +49,7 @@ class TrezorAPI(BaseAPI):
                             async for prefix, _, value in ijson.parse_async(response.content):
                                 if prefix == key:
                                     yield value
+                                    break
                         else: # Return response content stream
                             async for tx in ijson.items_async(response.content, "transactions.item"):
                                 yield tx

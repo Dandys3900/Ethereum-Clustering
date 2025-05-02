@@ -414,7 +414,7 @@
           </div>
 
           <!-- Results table -->
-          <div id="results" class="col-md-3" style="display: none;">
+          <div id="results" class="col-md-3 text-nowrap" style="display: none;">
             <div id="exportsBtns" class="gap-3" style="display: block;">
               <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
                 <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
@@ -696,7 +696,7 @@
           columns: ["Entity"],
           data: Object.keys(nodesParams).map(value => [
             gridjs.html(`
-              <span style="display: inline-block; width: 12px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
+              <span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
               ${value}
             `)
           ]),

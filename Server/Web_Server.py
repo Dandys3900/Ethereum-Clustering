@@ -39,12 +39,12 @@ async def getContext():
     global ongoingRefresh
     return {
         "syncDate"       : await trezor.getCurrentSyncDate(),
-        "exchLen"        : heuristics.getExchangeCount(),
+        "exchLen"        : len(heuristics.exchAddrs),
         "ongoingRefresh" : ongoingRefresh,
         "addrsCount"     : {
-            "exchanges" : nebula.getAddrsOfType("exchange", "COUNT(v)")[0],
-            "deposits"  : nebula.getAddrsOfType("deposit",  "COUNT(v)")[0],
-            "leafs"     : nebula.getAddrsOfType("leaf",     "COUNT(v)")[0]
+            "exchanges" : heuristics.cacheGet("exchanges_cnt"),
+            "deposits"  : heuristics.cacheGet("deposits_cnt"),
+            "leafs"     : heuristics.cacheGet("leafs_cnt")
         }
     }
 

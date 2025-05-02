@@ -30,3 +30,6 @@ To monitor system during clustering
 
 Check Trezor client availability
 `nc -zv 147.229.8.210 56300`
+
+Run unit-testing
+`pytest`

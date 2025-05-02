@@ -20,6 +20,10 @@ class NebulaAPI(BaseAPI):
         self.getNebulaPool()
         self.ensureConnect(skipSpaceSelection=True)
         self.createSpace()
+        # Ensure index is used for querying
+        self.execNebulaCommand('REBUILD TAG INDEX addrs_index')
+        Out.blank("Tag index rebuild done")
+
         # Ensure cleanup at exit
         atexit.register(self.closeConnection)
 

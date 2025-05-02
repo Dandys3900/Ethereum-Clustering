@@ -1,6 +1,6 @@
 # Performs clustering heuristics around target address
 # Imports
-import json
+import json, shelve
 from Helpers import Out
 from .Data_Handler import ServerHandler, partial
 from .API import NebulaAPI
@@ -17,12 +17,29 @@ class HeuristicsClass():
         # Init ServerData_Handler for communicating with blockchain client
         self.api = ServerHandler(self.nebula)
 
-    def getExchangeCount(self):
-        return len(self.exchAddrs)
+        # Initialize cache
+        Out.blank("Initializing cache")
+        if not self.cacheGet("exchanges_cnt"):
+            self.cacheSet("exchanges_cnt", len(self.nebula.getAddrsOfType("exchange")))
+        if not self.cacheGet("deposits_list"):
+            self.cacheSet("deposits_list", self.nebula.getAddrsOfType("deposit"))
+        if not self.cacheGet("deposits_cnt"):
+            self.cacheSet("deposits_cnt", len(self.cacheGet("deposits_list")))
+        if not self.cacheGet("leafs_cnt"):
+            self.cacheSet("leafs_cnt", len(self.nebula.getAddrsOfType("leaf")))
+        Out.blank("Cache initialized")
+
+    def cacheSet(self, key, value):
+        with shelve.open("cache.db") as cache:
+            cache[key] = value
+
+    def cacheGet(self, key):
+        with shelve.open("cache.db") as cache:
+            return cache.get(key, None)
 
     async def addExchanges(self, scope):
         # Limit amount of processed exchange addrs by given scope
-        exchAddrs = list(self.exchAddrs.items())[:int(self.getExchangeCount() * (scope / 100))]
+        exchAddrs = list(self.exchAddrs.items())[:int(len(self.exchAddrs) * (scope / 100))]
 
         # Add all exchanges to graph
         await self.api.runParalel([
@@ -40,6 +57,9 @@ class HeuristicsClass():
         exchAddrs = self.nebula.getAddrsOfType("exchange")
         # Update check-against list before searching for deposit addrs
         self.api.updateExchAddrs(self.exchAddrs.keys())
+
+        # Exchanges won't change till next clustering, cache them
+        self.cacheSet("exchanges_cnt", len(exchAddrs))
 
         # Create session for async requests
         async with SessionManager() as trezor_session:
@@ -64,6 +84,10 @@ class HeuristicsClass():
         # Store (parent) names of deposit addresses
         deposNames = self.nebula.getAddrsOfType("deposit", "v.address.name")
 
+        # Deposits won't change till next clustering, cache them
+        self.cacheSet("deposits_list", exchDepos)
+        self.cacheSet("deposits_cnt", len(exchDepos))
+
         # Create session for async requests
         async with SessionManager() as trezor_session:
             # Add all addresses interacting with deposit addresss -> leaf addresses
@@ -77,6 +101,10 @@ class HeuristicsClass():
                     nodeType   = "leaf"
                 ) for index, depoAddr in enumerate(exchDepos)
             ])
+
+        # Leafs won't change till next clustering, cache them
+        self.cacheSet("leafs_cnt", len(self.nebula.getAddrsOfType("leaf")))
+
         Out.success("Adding leafs done")
 
     # Performs update of addresses connected to known exchanges
@@ -90,10 +118,10 @@ class HeuristicsClass():
         await self.addExchanges(scope)
         await self.addDepositAddrs()
         await self.addClusteredAddrs()
-
-        Out.success("Refresh of DB was succesful")
         # When done, rebuild index with new data
         self.nebula.execNebulaCommand('REBUILD TAG INDEX addrs_index')
+
+        Out.success("Refresh of DB was succesful")
 
     # Performs clustering around target address
     async def clusterAddrs(self, targetAddr=""):
@@ -101,7 +129,7 @@ class HeuristicsClass():
 
         try: # Find deposit address(es) of target address
             # If already deposit address, skip and return graph
-            if targetAddr in self.nebula.getAddrsOfType("deposit"):
+            if targetAddr in self.cacheGet("deposits_list"):
                 targetAddrDepo = [targetAddr]
             else:
                 targetAddrDepo = self.nebula.toArrayTransform(self.nebula.execNebulaCommand(
