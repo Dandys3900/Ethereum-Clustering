@@ -16,35 +16,41 @@ class ServerHandler():
             self.trezor = TrezorAPI()
             # Store Nebula class instance
             self.nebula = nebulaAPI
+            # Lists of addresses
+            self.knownDepos = []
+            self.knownExchs = []
         except Exception as e:
             Out.error(e)
             # Exit on API error
             exit(-1)
 
+    def updateExchAddrs(self, value):
+        self.knownExchs = value
+
+    def updateDepoAddrsList(self, value):
+        self.knownDepos = value
+
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
-        tasks = [func() for func in funcsList]
+        tasks = [asyncio.create_task(func()) for func in funcsList]
         return await asyncio.gather(*tasks)
 
     # From given transactions, extract addresses
-    # NOTE: Store opposite address to found one in transaction
+    # Store opposite address to found one in transaction
     async def getTxAddrs(self, session=None, addr="", addrName="", parentAddr="", nodeType="", page=1):
         # To ensure address consistency, capitalize them
         addr = addr.upper()
-
-        apiResponse = await (self.trezor.get(session, f"v2/address/{addr}", params={
+        params = {
             "page"    : page,
             "details" : "txslight"
-        }))
-        # Check if valid server response
-        if not apiResponse or apiResponse.get("transactions", {}) == {}:
-            return
+        }
 
-        # Get list of transactions
-        apiResponse = apiResponse.get("transactions")
         # Iterate over received transaction records
-        for tx in apiResponse:
+        async for tx in (self.trezor.get(session, f"v2/address/{addr}", params=params)):
             try:
+                if tx is None:
+                    break
+
                 txFROMAddr = str(tx.get("vin")[0].get("addresses")[0]).upper()
                 txTOAddr   = str(tx.get("vout")[0].get("addresses")[0]).upper()
                 # Convert from Wei -> Ether
@@ -52,9 +58,20 @@ class ServerHandler():
                 # Also extract transaction ID and epoch time
                 txID   = str(tx.get("txid"))
                 txTime = datetime.fromtimestamp(float(tx.get("blockTime"))).strftime("%Y-%m-%d | %H:%M:%S")
+                # Determine if EOA transaction
+                eoaTx = (tx.get("ethereumSpecific").get("data") == "0x")
 
-                # Transaction contain target address and direction is TO target address
-                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr:
+                # Transaction contain target address with direction is TO target address and having send Ether > 0
+                if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr and txAmount > 0.0:
+                    # Exclude known exchange addresses
+                    if txFROMAddr in self.knownExchs:
+                        continue
+                    if nodeType == "leaf":
+                        # Exclude non-EOA leaf addresses
+                        # Exclude deposit addresses as leaf ones (if happens deposits transfer between each other, not valid)
+                        if not eoaTx or txFROMAddr in self.knownDepos:
+                            continue
+
                     # Add address to graph
                     await self.nebula.addNodeToGraph(
                         addr       = txFROMAddr,
@@ -65,21 +82,21 @@ class ServerHandler():
                         txParams   = f";{txID},{txTime},{txAmount}",
                         amount     = txAmount
                     )
+            except TypeError:
+                Out.error("getTxAddrs(): given tx object contains unexpected None values, skipping")
             except Exception as e:
-                Out.error(f"getTxAddrs() error: {e}")
-                continue
+                Out.error(f"getTxAddrs(): {e}")
 
     # Collects all addresses targetAddr has any transactions with
     async def getLinkedAddrs(self, session=None, targetAddr="", targetName="", parentAddr="", nodeType=""):
-        retVal = await self.trezor.get(session, f"v2/address/{targetAddr}", params={
+        # Get total number of pages of transaction for target address
+        totalPages = await anext(self.trezor.get(session, f"v2/address/{targetAddr}", key="totalPages", params={
             "details" : "txslight"
-        })
+        }))
         # Check if valid server response
-        if not retVal or not retVal.get("totalPages"):
+        if not totalPages:
             return
 
-        # Get total number of pages of transaction for target address
-        totalPages = retVal.get("totalPages")
         # Execute address collecting
         await self.runParalel([
             partial(

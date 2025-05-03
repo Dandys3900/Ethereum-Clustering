@@ -17,6 +17,8 @@
     <!-- GridJS -->
     <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
+    <!-- CryptoJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 
@@ -25,6 +27,7 @@
       :root {
         /* Introduce official FIT-blue color */
         --FITblue: #00ABE3;
+        --SelectedRED: #D46E6A;
       }
 
       .btn-primary {
@@ -34,13 +37,15 @@
 
       /* Change border and cursor when hovering over table's row */
       .resultsTable .gridjs-table tbody tr:hover {
-        border: 1px solid var(--FITblue);
+        border-right: 1px solid var(--SelectedRED);
+        border-left:  1px solid var(--SelectedRED);
         cursor: pointer;
       }
 
       /* Style for selected table row */
       .resultsTable .selected-row {
-        border: 1px solid var(--FITblue);
+        border-right: 1px solid var(--SelectedRED);
+        border-left:  1px solid var(--SelectedRED);
       }
     </style>
 
@@ -61,28 +66,47 @@
         text.style.display = (text.style.display === "none") ? "block" : "none";
       }
 
+      function showElement(elementId) {
+        document.getElementById(elementId).style.display = "block";
+      }
+
+      function hideElement(elementId) {
+        document.getElementById(elementId).style.display = "none";
+      }
+
       async function submitRefreshRequest(event) {
         event.preventDefault();
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
         // Make sure to hide "No address found"
-        document.getElementById("notFoundAddr").style.display = "block";
+        hideElement("notFoundAddr");
         // Show spinner
-        document.getElementById("loadSpinner").style.display = "block";
+        showElement("loadSpinner");
 
         // Create form and append extracted value to it
         const formData = new FormData();
         formData.append("scope", document.getElementById("refeshScope").value);
+        formData.append("pwd",   CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
 
-        await fetch("/refreshDB", {
+        const response = await fetch("/refreshDB", {
           method: "POST",
           body  : formData
         });
 
         // Hide spinner
-        document.getElementById("loadSpinner").style.display = "none";
-        // Clear URL afterwards
-        window.history.replaceState({}, "", "/");
+        hideElement("loadSpinner");
+        // Re-shown second row
+        showElement("secondRow");
+
+        if (!response.ok) {
+          let defaultError = "Error happened during the process";
+          // Notify user about invalid password provided
+          if (response.status === 401)
+            defaultError = "Invalid password provided, try again please...";
+          // Set alert text
+          document.getElementById("alertText").innerText = defaultError;
+          showElement("errorText");
+        }
       }
 
       function exportJSON() {
@@ -90,7 +114,7 @@
         downloadFile(
           "data.json",
           JSON.stringify(
-            ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)), null, 2
+            ((selectedNodes.size > 0) ? { nodes: Array.from(selectedNodes) } : { nodes: Object.keys(nodesParams) }), null, 2
           )
         );
       }
@@ -104,27 +128,48 @@
       }
 
       function downloadFile(filename, content) {
+        /**
+         * Function below, was taken from:
+         * https://flexiple.com/javascript/download-flle-using-javascript
+         * and scope of my changes was minimal or none.
+        */
         const blob = new Blob([content], { type: "text/plain" });
         const link = document.createElement("a");
+
         link.href = URL.createObjectURL(blob);
         link.download = filename;
         link.click();
       }
 
-      function copyDonateTextClipBoard() {
-        navigator.clipboard.writeText("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5")
-          .then(() => {
-            // Append it to existing element
-            const element = document.getElementById("donateText");
-            // Append success icon to text
-            element.innerHTML = "✅" + element.innerHTML;
+      function copyToClipboard(value) {
+        /**
+         * Function below, was taken from:
+         * https://stackoverflow.com/a/33928558/12801311
+         * and scope of my changes was minimal or none.
+        */
+        const element = document.createElement("textarea");
+        element.value = value;
+        // Append and select
+        document.body.appendChild(element);
+        element.select();
+        // Copy to clipboard
+        document.execCommand("copy");
+        // Remove afterwards
+        document.body.removeChild(element);
+      }
 
-            // Remove info text after 1s
-            setTimeout(() => {
-              // Set substring effectively removing added green tick icon
-              element.innerHTML = String(element.innerHTML).substring(1);
-            }, 1000);
-          });
+      function copyDonateText() {
+        copyToClipboard("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5");
+        // Append it to existing element
+        const element = document.getElementById("donateText");
+        // Append success icon to text
+        element.innerHTML = "✅" + element.innerHTML;
+
+        // Remove info text after 1s
+        setTimeout(() => {
+          // Set substring effectively removing added green tick icon
+          element.innerHTML = String(element.innerHTML).substring(1);
+        }, 1000);
       }
 
       function triggerLeftRow(whichBtn) {
@@ -152,7 +197,7 @@
 
       function setHighlightResultsTableItem(addr, highlight=true) {
         // Find it and set proper highlight class
-        document.querySelectorAll(".gridjs-tr").forEach(row => {
+        document.getElementById("dataTable").querySelectorAll(".gridjs-tr").forEach(row => {
           const value = row.innerText.trim();
 
           if (value.includes(addr)) {
@@ -199,6 +244,10 @@
             data: graph.nodes
           }]
         });
+      }
+
+      function toggleProceedBtn(pwdValue) {
+        document.getElementById("proceedBtn").disabled = (pwdValue === "");
       }
 
       document.addEventListener("DOMContentLoaded", function() {
@@ -264,6 +313,12 @@
             <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
               <img src="/static/maintenanceOn.png" class="img-fluid">
             </div>
+
+            <!-- Wrong password text alert -->
+            <div id="errorText" class="alert alert-danger fade show" style="display:none; width: fit-content;">
+              <strong id="alertText">Invalid password provided, try again please...</strong>
+              <button type="button" class="btn-close" onclick="hideElement('errorText')"></button>
+            </div>
           </div>
 
           <!-- Menu -->
@@ -276,8 +331,21 @@
             <div class="d-flex justify-content-end position-relative mt-2">
               <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
                 {% set values = syncDate.split(";") %}
-                <div><b>Highest block: </b>{{ values[0] }}</div>
-                <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                {% set trezorUp = (syncDate != ";") %}
+
+                <div>Blockchain client:</div>
+                {% if trezorUp %}
+                  <div><b>Highest block: </b>{{ values[0] }}</div>
+                  <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                {% else %}
+                  <div style="color: red;">Client unavailable</div>
+                {% endif %}
+                <hr>
+
+                <div>Clustered addresses counts:</div>
+                <div><b>Exchanges: </b>{{ addrsCount.exchanges }}</div>
+                <div><b>Deposits: </b>{{ addrsCount.deposits }}</div>
+                <div><b>Leafs: </b>{{ addrsCount.leafs }}</div>
                 <hr>
 
                 <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
@@ -285,7 +353,15 @@
                 {% set defCount = (exchLen / 2) | int %}
                 <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
                 <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh Database</button>
+                <button type="button" class="btn btn-danger" id="doDBrefreshBtn" data-bs-toggle="modal" data-bs-target="#confirmRefresh">Refresh database</button>
+
+                {% if not trezorUp %}
+                  <div><b>Cannot refresh database</b></div>
+                  <script type="text/javascript">
+                    // If unable to parse syncDate values, blockbook is probably down, avoid DB refresh
+                    document.getElementById("doDBrefreshBtn").disabled = true;
+                  </script>
+                {% endif %}
               </div>
             </div>
           </div>
@@ -304,8 +380,11 @@
                 </div>
 
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
-                  <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)">Proceed</button>
+                  <form id="refreshModalForm" class="d-flex gap-1">
+                    <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
+                    <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" disabled>Proceed</button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -327,13 +406,15 @@
         </div>
 
         <!-- Second row: Results table + graph -->
-        <div id="secondRow" class="row flex-grow-1">
-          <button id="outterBtn" class="btn btn-warning" style="display: none; width: fit-content; height: fit-content;" onclick="triggerLeftRow('outterBtn')">
-            <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
-          </button>
+        <div id="secondRow" class="row flex-nowrap flex-grow-1">
+          <div id="outterBtn" class="col-auto pe-0" style="display: none;">
+            <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
+              <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+            </button>
+          </div>
 
           <!-- Results table -->
-          <div id="results" class="col-md-3" style="display: none;">
+          <div id="results" class="col-md-3 text-nowrap" style="display: none;">
             <div id="exportsBtns" class="gap-3" style="display: block;">
               <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
                 <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
@@ -390,7 +471,7 @@
 
                 <!-- Donate text -->
                 <div id="donateText" class="text-md-end mt-2">
-                  Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateTextClipBoard()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
+                  Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateText()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
                 </div>
               </div>
             </div>
@@ -416,22 +497,21 @@
       <!-- Handle ongoing refresh -->
       <script type="text/javascript">
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
         // Disable all buttons
         document.querySelectorAll("button").forEach(button => button.disabled = true);
         // Show "Maintenance in progress" image
-        document.getElementById("refreshOn").style.display = "block";
+        showElement("refreshOn");
       </script>
     {% else %}
       <script type="text/javascript">
-        const secondRow = document.getElementById("secondRow");
-        // Show content of second row
-        if (secondRow.style.display === "none")
-          secondRow.style.display = "block";
+        // Show content of second row (if not already shown)
+        if (document.getElementById("secondRow").style.display === "none")
+          showElement("secondRow");
         // Re-enable all buttons
         document.querySelectorAll("button").forEach(button => button.enabled = true);
         // Hide "Maintenance in progress" image
-        document.getElementById("refreshOn").style.display = "none";
+        hideElement("refreshOn");
       </script>
     {% endif %}
 
@@ -439,17 +519,17 @@
       <!-- Handle not found address -->
       <script type="text/javascript">
         // Show "No address found" image
-        document.getElementById("notFoundAddr").style.display = "block";
+        showElement("notFoundAddr");
         // Hide content of second row
-        document.getElementById("secondRow").style.display = "none";
+        hideElement("secondRow");
       </script>
     {% elif resultsGraph %}
       <script type="text/javascript">
         // Hide faculty logo and explanatory text about used heuristics
-        document.getElementById("facLogo").style.display = "none";
-        document.getElementById("howItWorksText").style.display = "none";
+        hideElement("facLogo");
+        hideElement("howItWorksText");
         // Show toggle button
-        document.getElementById("outterBtn").style.display = "block";
+        showElement("outterBtn");
 
         // Initially create graph object
         const canvas = document.getElementById("container");
@@ -472,7 +552,7 @@
             "Amount",
             {
               name     : "Show on EtherScan🕵️",
-              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}'>Link</a></b>`)
+              formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}' target='_blank'>Link</a></b>`)
             }
           ],
           data: [],
@@ -483,7 +563,6 @@
           search   : true
         }).render(document.getElementById("edgeTxsBody"));
 
-
         //*********** Render graph for results ***********//
         var nodesParams = {/*Amount, Styling*/};
         // Get data from Python
@@ -493,7 +572,7 @@
           "exchange": {size: 12, color: "#6270c0"},
           "deposit" : {size: 10, color: "#a1ca7f"},
           "leaf"    : {size: 8,  color: "#ecc96c"},
-          "selected": {size: 14, color: ""       } // Order affects nodes color
+          "selected": {size: 14, color: "#d46e6a"} // Order affects nodes color
         };
 
         let graph = {
@@ -557,13 +636,14 @@
           },
           series: [{
             type      : "graph",
-            layout    : "force",
+            layout    : "circular", // force, dagre
             data      : graph.nodes,
             links     : graph.links,
             categories: graph.categories,
             roam      : true,
+            draggable : true,
             zoom      : 1,
-            center: ['50%', '50%'],
+            center    : ['50%', '50%'],
             force: {
               repulsion: 0,
               friction : 0,
@@ -598,6 +678,10 @@
             // Show modal
             (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
           }
+          else { // Node
+            // Copy node address to clipboard
+            copyToClipboard(params.data.nodename);
+          }
         });
 
         //*********** List of clustered addresses ***********//
@@ -630,12 +714,12 @@
           });
 
         // Display and fill result's charts
-        document.getElementById("resCharts").style.display = "block";
+        showElement("resCharts");
         setHighlightResultsTableItem(userAddr);
 
         // Resolve absence of "search" event in grid.js
         // Add global listener for input events and select ones related to table search element
-        document.addEventListener("input", event => {
+        document.getElementById("dataTable").addEventListener("input", event => {
           if (event.target.matches(".gridjs-search input")) {
             selectedNodes.clear();
             let query = event.target.value.toUpperCase();

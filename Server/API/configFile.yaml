@@ -5,5 +5,5 @@ trezor:
 # Nebula extension: "127.0.0.1"
 # Nebula in Docker: "graphd"
 nebula:
-  addr: "127.0.0.1"
+  addr: "graphd"
   port: 9669
