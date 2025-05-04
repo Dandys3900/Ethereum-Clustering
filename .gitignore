@@ -4,7 +4,7 @@ DEXAddr/
 virtenv/
 plotenv/
 coinmonenv/
-*.zip
 __pycache__
 .pytest_cache
 data
+Coinmon/

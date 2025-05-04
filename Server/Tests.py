@@ -83,3 +83,17 @@ async def test_SearchEndpoint():
     assert "0X0000000000000000000000000000000000000003" in response.text
     assert "0X0000000000000000000000000000000000000004" in response.text
     assert "0X0000000000000000000000000000000000000005" not in response.text
+
+async def test_InvalidPwd():
+    with TestClient(app) as mc:
+        # First, get leafs for first deposit address cluster
+        response = mc.get("/refreshDB", params={
+            "scope": 1,
+            "pwd"  : "INVALID"
+        })
+
+    assert response.status_code == 401
+    assert response.detail == "Invalid password"
+
+    # test snazit se pridat known exchange/depozit adresu do databaze
+    #
