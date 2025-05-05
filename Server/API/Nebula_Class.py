@@ -75,10 +75,10 @@ class NebulaAPI(BaseAPI):
             Out.error(f"Error while closing connection: {e}")
 
     # Check if given Nebula object (space, index, edge) already exists
-    def objectExists(self, assertName, objName):
+    def objectExists(self, assertName, objName, name="Name"):
         result = self.execNebulaCommand(f'SHOW {objName}')
         if result and not result.is_empty():
-            return assertName in [val.as_string() for val in result.column_values("Name")]
+            return assertName in [val.as_string() for val in result.column_values(name)]
         return False
 
     # Ensures all spaces are already present

@@ -5,7 +5,7 @@ from .Heuristics import HeuristicsClass
 from Server.Web_Server import app
 from fastapi.testclient import TestClient
 
-class TestsClass():
+class HelperClass():
     def __init__(self):
         self.heuristics = HeuristicsClass(targetSpace="MockSpace")
         # Set Nebula to interact with database
@@ -62,38 +62,52 @@ class TestsClass():
             parentAddr="0X0000000000000000000000000000000000000002",
             nodeType="leaf"
         )
-# End of TestsClass class
+# End of HelperClass class
 
 #################### Tests ####################
 @pytest.mark.asyncio
-async def test_SearchEndpoint():
-    testHelper = TestsClass()
+async def test_Search():
+    testHelper = HelperClass()
     # Clear test space on NebulaGraph
     testHelper.clearMockDB()
     # Fill test space with test data
     await testHelper.fillDB()
 
+    assert (response := await testHelper.heuristics.clusterAddrs(
+        targetAddr="0X0000000000000000000000000000000000000003"
+    ))
+    assert "0X0000000000000000000000000000000000000003" in response
+    assert "0X0000000000000000000000000000000000000004" in response
+    assert "0X0000000000000000000000000000000000000005" not in response
+
+    # Cleanup
+    testHelper.clearMockDB()
+
+def test_InvalidPwd():
     with TestClient(app) as mc:
         # First, get leafs for first deposit address cluster
-        response = mc.get("/search", params={
-            "targetAddr": "0X0000000000000000000000000000000000000003"
-        })
-
-    assert response.status_code == 200
-    assert "0X0000000000000000000000000000000000000003" in response.text
-    assert "0X0000000000000000000000000000000000000004" in response.text
-    assert "0X0000000000000000000000000000000000000005" not in response.text
-
-async def test_InvalidPwd():
-    with TestClient(app) as mc:
-        # First, get leafs for first deposit address cluster
-        response = mc.get("/refreshDB", params={
+        response = mc.post("/refreshDB", data={
             "scope": 1,
-            "pwd"  : "INVALID"
+            "pwd"  : "INVALID" # Invalid pwd
         })
+        # Check correct response for invalid password
+        assert response.status_code == 401
 
-    assert response.status_code == 401
-    assert response.detail == "Invalid password"
+def test_NebulaInit():
+    targetSpace="MockSpace"
+    # Trigger creation of Nebula mock space
+    nebula = (HelperClass()).nebula
 
-    # test snazit se pridat known exchange/depozit adresu do databaze
-    #
+    # Check all DB objects exists
+    assert nebula.objectExists(targetSpace, "SPACES")
+    assert nebula.objectExists("address", "TAGS")
+    assert nebula.objectExists("linked_to", "EDGES")
+    assert nebula.objectExists("addrs_index", "TAG INDEXES", name="Index Name")
+
+@pytest.mark.asyncio
+async def test_TrezorSyncDate():
+    testHelper = HelperClass()
+    syncDate = await testHelper.heuristics.api.trezor.getCurrentSyncDate()
+
+    # Check blockbook is up
+    assert syncDate != ";"
