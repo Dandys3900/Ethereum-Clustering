@@ -1,4 +1,9 @@
-# Requests data for UI from server and handles response
+###################################
+# @file Data_Handler.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Requests and handles data for UI from server.
+###################################
+
 # Imports
 import asyncio
 from functools import partial

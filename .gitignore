@@ -1,4 +1,8 @@
-# .gitignore
+###################################
+# @file .gitignore
+# @author Tomáš Daniel (xdanie14)
+###################################
+
 addresses.csv
 DEXAddr/
 virtenv/

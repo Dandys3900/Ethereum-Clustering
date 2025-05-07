@@ -1,3 +1,9 @@
+###################################
+# @file Base_Class.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Base (parent) class for API classes.
+###################################
+
 # Imports
 import urllib3, yaml, aiohttp
 from asyncio.exceptions import TimeoutError

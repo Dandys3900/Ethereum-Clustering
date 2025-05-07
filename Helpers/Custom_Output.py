@@ -1,3 +1,9 @@
+###################################
+# @file Custom_Output.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Coloured terminal text.
+###################################
+
 # Imports
 import json
 from termcolor import colored

@@ -1,3 +1,9 @@
+<!--
+  @file index.html
+  @author Tomáš Daniel (xdanie14)
+  @brief Main website source page.
+-->
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -99,13 +105,13 @@
         showElement("secondRow");
 
         if (!response.ok) {
-          let defaultError = "Error happened during the process";
+          let defaultError = "Error happened during the clustering process";
           // Notify user about invalid password provided
           if (response.status === 401)
             defaultError = "Invalid password provided, try again please...";
           // Set alert text
           document.getElementById("alertText").innerText = defaultError;
-          showElement("errorText");
+          (new bootstrap.Modal(document.getElementById("errorText"))).show();
         }
       }
 
@@ -120,10 +126,11 @@
       }
 
       function exportCSV() {
+        header = ["nodes"]
         // When exporting, prefer selected nodes, default is all nodes
         downloadFile(
           "data.csv",
-          ((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams)).join(",\n")
+          (header.concat((selectedNodes.size > 0) ? Array.from(selectedNodes) : Object.keys(nodesParams))).join("\n")
         );
       }
 
@@ -146,14 +153,19 @@
          * Function below, was taken from:
          * https://stackoverflow.com/a/33928558/12801311
          * and scope of my changes was minimal or none.
+         * Author: Greg Lowe (https://stackoverflow.com/users/1460491/greg-lowe)
         */
         const element = document.createElement("textarea");
         element.value = value;
         // Append and select
         document.body.appendChild(element);
         element.select();
-        // Copy to clipboard
-        document.execCommand("copy");
+        try { // Copy to clipboard
+          document.execCommand("copy");
+        }
+        catch (ex) {
+            console.warn("Copy to clipboard failed: ", ex);
+        }
         // Remove afterwards
         document.body.removeChild(element);
       }
@@ -185,11 +197,6 @@
         // This applies to initial page load where can't interact with table directly as being hidden
         if (col.style.display === "block" && selectedNodes.has(userAddr))
           setHighlightResultsTableItem(userAddr);
-
-        // Update icon to offer hide/show
-        const icon = document.getElementById("showHideLeftRow");
-        icon.classList.toggle("bi-arrow-bar-left");
-        icon.classList.toggle("bi-arrow-bar-right");
 
         // Ensure resize of chart
         addrChart.resize();
@@ -313,12 +320,6 @@
             <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
               <img src="/static/maintenanceOn.png" class="img-fluid">
             </div>
-
-            <!-- Wrong password text alert -->
-            <div id="errorText" class="alert alert-danger fade show" style="display:none; width: fit-content;">
-              <strong id="alertText">Invalid password provided, try again please...</strong>
-              <button type="button" class="btn-close" onclick="hideElement('errorText')"></button>
-            </div>
           </div>
 
           <!-- Menu -->
@@ -403,13 +404,24 @@
               </div>
             </div>
           </div>
+
+          <!-- Dialog for wrong entered password -->
+          <div class="modal fade alert alert-danger" id="errorText" role="dialog" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-body">
+                  <strong id="alertText">Invalid password provided, try again please...</strong>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Second row: Results table + graph -->
         <div id="secondRow" class="row flex-nowrap flex-grow-1">
           <div id="outterBtn" class="col-auto pe-0" style="display: none;">
             <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
-              <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+              <i class="bi bi-arrow-bar-right"></i>
             </button>
           </div>
 
@@ -417,7 +429,7 @@
           <div id="results" class="col-md-3 text-nowrap" style="display: none;">
             <div id="exportsBtns" class="gap-3" style="display: block;">
               <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
-                <i id="showHideLeftRow" class="bi bi-arrow-bar-left"></i>
+                <i class="bi bi-arrow-bar-left"></i>
               </button>
               <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
               <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>

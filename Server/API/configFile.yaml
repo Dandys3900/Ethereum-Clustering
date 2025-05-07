@@ -1,3 +1,9 @@
+###################################
+# @file configFile.yaml
+# @author Tomáš Daniel (xdanie14)
+# @brief File with API configuration.
+###################################
+
 trezor:
   url: "http://147.229.8.210:56300/api/"
   # NOTE: No authentization needed

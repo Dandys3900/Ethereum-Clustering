@@ -1,35 +1,38 @@
-### Run web server manually
-In home directory of project, run:
-`fastapi dev Server/Web_Server.py`
+# Ethereum Clustering App
+
+## Content
+- Helpers/
+    - Contains helper class for enhancing terminal readability by text colouring
+- Plotting/
+    - Contains collected CSV data about used system resources during clustering operation runtime. Data for each scope are merged into single archive *plotting_data.zip*. Directory also contains Python scripts used for generating resource plots in this thesis.
+- Server/
+    - API/
+        - Contains Python classes each for interaction with given component (database + blockchain client)
+    - static/
+        - Contains static contents used on webpage(s)
+    - templates/
+        - Contains main HTML file rendering app's webpage(s)
+
+## Setup
+1. Make sure *Docker* and *Docker-compose* are installed
+    - For Linux:
+        - https://docs.docker.com/engine/install/ubuntu/
+        - https://docs.docker.com/compose/install/
+2. In root directory of this project, TAR archive *prebuild_image.tar* should be present
+3. In root directory, load pre-built Docker image:
+`docker load -i prebuild_image.tar`
+    - Depending on current system user priviliges, using `sudo` prefix might be needed
+4. Final step is to run the application via installed Docker-compose tool: `docker-compose -f docker-compose.yml up`
+    - Then just wait for the terminal output from the FastAPI web server containing IP address and port of the running application instance. To ensure the correct sequence of initialization tasks, in particular starting the database and creating the necessary structures, the startup procedure may take on for several tens of seconds
 
 ### Test examples
-Few addresses known to produce interesting graphs:
+Addresses known to produce interesting clusters:
 - 0XDAE946D4ECCD27CD370963A181B39D73A872820C
+- 0X81E11145FC60DA6EBD43EEE7C19E18CE9E21BFD5
 
-## Docker
-To build image of THIS PROJECT ONLY stuff, run:
-`docker build -t eth_server .`
-`docker save -o bp_app.tar eth_server:latest`
-`docker load -i bp_app.tar`
+### Unit-tests
+The easiest way to run the provided unit-tests is within running application's container.
 
-Before following, make sure Docker Desktop is ON and it's Nebula extension container is PAUSED.
-
-Then to build and run container with both THIS PROJECT & NebulaGraph, run:
-`docker-compose -f docker-compose.yml up --build`
-or without triggering build sequence
-`docker-compose -f docker-compose.yml up`
-
-View docker logs when running in detached mode
-`docker-compose logs --tail=1000 -f`
-
-To transfer docker image to Anton
-`scp -i ~/.ssh/id_ed25519 -P 25021 bp_app.tar xdanie14@anton4.fit.vutbr.cz:/home/xdanie14/project`
-
-To monitor system during clustering
-`glances --export csv --export-csv-file usage_log.csv --disable-plugin percpu`
-
-Check Trezor client availability
-`nc -zv 147.229.8.210 56300`
-
-Run unit-testing
-`pytest`
+1. Find image ID of the running instance, look for entry with name "eth_server*": `docker ps`
+2. Connect to running container: `docker exec -it IMAGE_ID bash`
+3. Then simply type: `pytest`

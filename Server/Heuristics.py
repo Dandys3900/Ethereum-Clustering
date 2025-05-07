@@ -1,4 +1,9 @@
-# Performs clustering heuristics around target address
+###################################
+# @file Heuristics.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Performs clustering heuristics and cluster search for target address.
+###################################
+
 # Imports
 import json, shelve
 from Helpers import Out

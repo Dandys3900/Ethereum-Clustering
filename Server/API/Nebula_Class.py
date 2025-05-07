@@ -1,3 +1,9 @@
+###################################
+# @file Nebula_Class.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Class for interaction with database client.
+###################################
+
 # Imports
 import atexit, time
 from .Base_Class import BaseAPI, yaml, Out

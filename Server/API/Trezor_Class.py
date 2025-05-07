@@ -1,3 +1,9 @@
+###################################
+# @file Trezor_Class.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Class for interaction with blockchain client.
+###################################
+
 # Imports
 import ijson, asyncio
 from .Base_Class import *
@@ -32,8 +38,8 @@ class TrezorAPI(BaseAPI):
     async def get(self, session=None, endpoint="", params=None, key=None):
         # Construct target URL
         url = self.url + endpoint
-        async with self.semaphore:
-            for attempt in range(1, 4):
+        for attempt in range(1, 4):
+            async with self.semaphore:
                 try:
                     await self.sessionCreating.wait()
                     currentSession = await session.getSession()

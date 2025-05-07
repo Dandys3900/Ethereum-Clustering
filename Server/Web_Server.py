@@ -1,3 +1,9 @@
+###################################
+# @file Web_Server.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Web server managing endpoints.
+###################################
+
 # Imports
 import os
 import hashlib

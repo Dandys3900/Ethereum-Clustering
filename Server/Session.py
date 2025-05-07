@@ -1,3 +1,9 @@
+###################################
+# @file Session.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Manages and ensures validity of HTTP sessions.
+###################################
+
 # Imports
 from asyncio import Event
 from Helpers import Out

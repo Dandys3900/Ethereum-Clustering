@@ -1,4 +1,9 @@
-# Class for unittests
+###################################
+# @file Tests.py
+# @author Tomáš Daniel (xdanie14)
+# @brief Class for unit-tests.
+###################################
+
 # Imports
 import pytest
 from .Heuristics import HeuristicsClass
