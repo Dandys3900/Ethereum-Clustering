@@ -82,10 +82,6 @@
 
       async function submitRefreshRequest(event) {
         event.preventDefault();
-        // Hide content of second row
-        hideElement("secondRow");
-        // Make sure to hide "No address found"
-        hideElement("notFoundAddr");
         // Show spinner
         showElement("loadSpinner");
 
@@ -101,8 +97,6 @@
 
         // Hide spinner
         hideElement("loadSpinner");
-        // Re-shown second row
-        showElement("secondRow");
 
         if (!response.ok) {
           let defaultError = "Error happened during the clustering process";
@@ -139,6 +133,7 @@
          * Function below, was taken from:
          * https://flexiple.com/javascript/download-flle-using-javascript
          * and scope of my changes was minimal or none.
+         * Author: Siddharth Khuntwal
         */
         const blob = new Blob([content], { type: "text/plain" });
         const link = document.createElement("a");
@@ -309,7 +304,7 @@
             </form>
 
             <!-- DB refresh spinner -->
-            <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em;"></div>
+            <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em; margin-bottom: 0.5em;"></div>
 
             <!-- Address not found -->
             <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
@@ -406,8 +401,8 @@
           </div>
 
           <!-- Dialog for wrong entered password -->
-          <div class="modal fade alert alert-danger" id="errorText" role="dialog" tabindex="-1">
-            <div class="modal-dialog">
+          <div class="modal fade" id="errorText" role="dialog" tabindex="-1">
+            <div class="modal-dialog alert alert-danger">
               <div class="modal-content">
                 <div class="modal-body">
                   <strong id="alertText">Invalid password provided, try again please...</strong>

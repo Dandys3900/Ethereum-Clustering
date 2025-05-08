@@ -23,7 +23,9 @@
 `docker load -i prebuild_image.tar`
     - Depending on current system user priviliges, using `sudo` prefix might be needed
 4. Final step is to run the application via installed Docker-compose tool: `docker-compose -f docker-compose.yml up`
-    - Then just wait for the terminal output from the FastAPI web server containing IP address and port of the running application instance. To ensure the correct sequence of initialization tasks, in particular starting the database and creating the necessary structures, the startup procedure may take on for several tens of seconds
+    - Then just wait for the terminal output from the FastAPI web server containing IP address and port (8000 by default) of the running application instance. To ensure the correct sequence of initialization tasks, in particular starting the database and creating the necessary structures, the startup procedure may take on for several tens of seconds
+
+**In case of having custom running instance of blockchain client**, it is necessary to edited config file located in */Server/API/configFile.yml*. Finally, run the application: `docker-compose -f docker-compose.yml up --build`
 
 ### Test examples
 Addresses known to produce interesting clusters:
