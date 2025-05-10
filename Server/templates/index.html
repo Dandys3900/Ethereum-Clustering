@@ -268,7 +268,7 @@
           <div class="col position-relative">
             <!-- Faculty logo -->
             <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
-              <a href="https://www.fit.vut.cz/.en">
+              <a href="https://www.fit.vut.cz/.en" target="_blank">
                 <img src="/static/VUTFIT_Logo.png" class="img-fluid">
               </a>
             </div>
@@ -307,8 +307,14 @@
             <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em; margin-bottom: 0.5em;"></div>
 
             <!-- Address not found -->
-            <div id="notFoundAddr" style="padding-top: 20px; width: 40%; display: none;">
-              <img src="/static/NotFoundImg.png" class="img-fluid">
+            <div id="notFoundAddr" style="padding-top: 20px; display: none;">
+              <img src="/static/NotFoundImg.png" class="img-fluid" style="width: 40%; margin-left: 30%; margin-right: 30%;">
+              <hr>
+              💡<b>Oh no, what happened?</b> Two explanations, provided address:
+              <ol class="list-group list-group-numbered">
+                <li class="list-group-item">Is known exchange (not supported as it would likely show giant clusters)</li>
+                <li class="list-group-item">Is not included in the current database (try refresh it with larger scope)</li>
+              </ol>
             </div>
 
             <!-- Ongoing refresh (maintenance) -->
@@ -447,7 +453,7 @@
                   where to send these funds, called <b>deposit address</b>. This address must be used
                   consistently only for the same user, otherwise it would lead to false positives clusters. Now,
                   whenever multiple addresses send their funds to the same deposit address, it's very likely
-                  these addresses are controlled by the same entity, how else they would know this deposit address, right?
+                  these addresses are controlled by the same entity, how else would they know this deposit address, right?
                   By making these assumptions, we cluster all these addresses based on used deposit address.
                   Try by Yourself!
                 </div>
@@ -487,11 +493,11 @@
             <!-- Bottom row - contacts -->
             <div class="row justify-content-center">
               <div class="col-auto d-flex gap-3">
-                <a href="https://www.linkedin.com/in/tom%C3%A1%C5%A1-daniel-b71724197/">
+                <a href="https://www.linkedin.com/in/tom%C3%A1%C5%A1-daniel-b71724197/" target="_blank">
                   <i class="bi bi-linkedin fs-4"></i>
                 </a>
 
-                <a href="https://github.com/Dandys3900/Ethereum-Clustering">
+                <a href="https://github.com/Dandys3900/Ethereum-Clustering" target="_blank">
                   <i class="bi bi-github fs-4"></i>
                 </a>
               </div>

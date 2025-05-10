@@ -144,7 +144,7 @@ class HeuristicsClass():
             # Check if found anything
             assert len(targetAddrDepo)
         except Exception:
-            Out.error(f"Provided address is unknown or not leaf: {targetAddr}")
+            Out.error(f"Provided address is unknown or not leaf or deposit: {targetAddr}")
             return ""
 
         subGraphdata = ""
