@@ -133,7 +133,7 @@ class NebulaAPI(BaseAPI):
             )
 
     # Helper to catch eventual execution errors
-    def execNebulaCommand(self, command=""):
+    def execNebulaCommand(self, command="", cnt=1):
         try:
             assert self.session
             resp = self.session.execute(command)
@@ -143,9 +143,12 @@ class NebulaAPI(BaseAPI):
             return resp
         except Exception as e:
             Out.error(f"execNebulaCommand(): {e}")
+            # Tried again with new session, but still fails, return
+            if cnt == 0:
+                return None
             # Ensure we have valid session
             self.ensureConnect()
-            return self.execNebulaCommand(command)
+            return self.execNebulaCommand(command, cnt=(cnt-1))
 
     def toArrayTransform(self, result=None, pivot=""):
         if not result or result.is_empty():
