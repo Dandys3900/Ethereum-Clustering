@@ -9,12 +9,13 @@ import os
 import hashlib
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from dotenv import load_dotenv
 from Server import HeuristicsClass
 from .API import TrezorAPI
+from Helpers import Cache
 
 # Load env variables
 load_dotenv()
@@ -48,9 +49,9 @@ async def getContext():
         "exchLen"        : len(heuristics.exchAddrs),
         "ongoingRefresh" : ongoingRefresh,
         "addrsCount"     : {
-            "exchanges" : heuristics.cacheGet("exchanges_cnt"),
-            "deposits"  : heuristics.cacheGet("deposits_cnt"),
-            "leafs"     : heuristics.cacheGet("leafs_cnt")
+            "exchanges" : Cache.get("exchanges_cnt"),
+            "deposits"  : Cache.get("deposits_cnt"),
+            "leafs"     : Cache.get("leafs_cnt")
         }
     }
 
@@ -59,13 +60,13 @@ async def getContext():
 async def showHome(request: Request):
     return templates.TemplateResponse(
         request = request,
-        name    = "index.html",
+        name    = "intro.html",
         context = await getContext()
     )
 
 # Refresh database
-@app.post("/refreshDB", response_class=HTMLResponse)
-async def refreshDB(request: Request, scope: int = Form(...), pwd: str = Form(...)):
+@app.post("/refreshDB", response_class=JSONResponse)
+async def refreshDB(minHeight: int = Form(...), maxHeight: int = Form(...), scope: int = Form(...), pwd: str = Form(...)):
     global ongoingRefresh
 
     # Check for valid refresh password
@@ -76,16 +77,12 @@ async def refreshDB(request: Request, scope: int = Form(...), pwd: str = Form(..
 
     if not ongoingRefresh:
         ongoingRefresh = True
-        # Trigger refresh with given scope
-        await heuristics.updateAddrsDB(scope=scope)
+        # Trigger refresh with given scope and block limits
+        await heuristics.updateAddrsDB(scope=scope, minHeight=minHeight, maxHeight=maxHeight)
         ongoingRefresh = False
 
-    # Render page
-    return templates.TemplateResponse(
-        request = request,
-        name    = "index.html",
-        context = await getContext()
-    )
+    # Return new data
+    return (await getContext())
 
 # Init search
 @app.post("/search", response_class=HTMLResponse)
@@ -98,7 +95,7 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
     # Render page
     return templates.TemplateResponse(
         request = request,
-        name    = "index.html",
+        name    = "result.html",
         context = {
             **(await getContext()),
             "targetAddr"   : targetAddr,

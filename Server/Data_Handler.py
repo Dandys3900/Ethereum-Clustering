@@ -7,14 +7,14 @@
 # Imports
 import asyncio
 from functools import partial
-from Helpers import Out
+from Helpers import Out, Cache
 from .API import *
 from datetime import datetime
 
 # Const representing value of 1 Wei
 ETH_WEI = 1_000_000_000_000_000_000
 
-class ServerHandler():
+class DataHandler():
     def __init__(self, nebulaAPI:NebulaAPI):
         try:
             # Create API instance
@@ -24,16 +24,13 @@ class ServerHandler():
             # Lists of addresses
             self.knownDepos = []
             self.knownExchs = []
+            # Block limits (set by Heuristics class and by user)
+            self.minBlock = None
+            self.maxBlock = None
         except Exception as e:
             Out.error(e)
             # Exit on API error
             exit(-1)
-
-    def updateExchAddrs(self, value):
-        self.knownExchs = value
-
-    def updateDepoAddrsList(self, value):
-        self.knownDepos = value
 
     # Submits tasks to the executor making them asynchronous
     async def runParalel(self, funcsList):
@@ -47,11 +44,15 @@ class ServerHandler():
         addr = addr.upper()
         params = {
             "page"    : page,
+            # Skip already processed blocks (otherwise start from initial (0) block (or value set by user))
+            "from"    : self.minBlock if self.minBlock else Cache.get(addr, 0),
+            # if set use user's max block limit, else stop and client's heighest parsed block
+            "to"      : self.maxBlock if self.maxBlock else self.trezor.heighestBlock,
             "details" : "txslight"
         }
 
         # Iterate over received transaction records
-        async for tx in (self.trezor.get(session, f"v2/address/{addr}", params=params)):
+        async for i, tx in enumerate(self.trezor.get(session, f"v2/address/{addr}", params=params)):
             try:
                 if tx is None:
                     break
@@ -65,6 +66,13 @@ class ServerHandler():
                 txTime = datetime.fromtimestamp(float(tx.get("blockTime"))).strftime("%Y-%m-%d | %H:%M:%S")
                 # Determine if EOA transaction
                 eoaTx = (tx.get("ethereumSpecific").get("data") == "0x")
+
+                # Get first valid exchange tx and store block height to skip it next refresh
+                # Returned txs are sorted by block height in descending order (first tx is highest)
+                if nodeType == "exchange" and i == 0:
+                    # Get block height of newest tx
+                    blockHeight = int(tx.get("blockHeight"))
+                    Cache.set(addr, (blockHeight + 1))
 
                 # Transaction contain target address with direction is TO target address and having send Ether > 0
                 if addr in [txFROMAddr, txTOAddr] and addr == txTOAddr and txAmount > 0.0:
@@ -114,4 +122,4 @@ class ServerHandler():
                 page       = page
             ) for page in range(1, (totalPages + 1))
         ])
-# End of ServerHandler class
+# End of DataHandler class
