@@ -25,12 +25,12 @@ DB_REFRESH_PWD = os.getenv("DB_REFRESH_PWD", "")
 # Init FastAPI
 app = FastAPI()
 # Absolute path to current file parent
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 # Serve static files
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "Client" / "static")), name="static")
 
 # Prepare template for webpage
-templates = Jinja2Templates(directory="Server/templates")
+templates = Jinja2Templates(directory="Client/templates")
 
 # Create Heuristics class instance
 heuristics = HeuristicsClass()
@@ -45,13 +45,17 @@ ongoingRefresh = False
 async def getContext():
     global ongoingRefresh
     return {
-        "syncDate"       : await trezor.getCurrentSyncDate(),
+        "clientData"     : await trezor.getCurrentClientData(),
         "exchLen"        : len(heuristics.exchAddrs),
         "ongoingRefresh" : ongoingRefresh,
         "addrsCount"     : {
             "exchanges" : Cache.get("exchanges_cnt"),
             "deposits"  : Cache.get("deposits_cnt"),
             "leafs"     : Cache.get("leafs_cnt")
+        },
+        "curBlockVals" : {
+            "currentMaxBlock" : heuristics.dataHandler.maxBlock if heuristics.dataHandler.maxBlock else trezor.heighestBlock, # Get currently set highest block by user or client's highest
+            "currentMinBlock" : heuristics.dataHandler.minBlock if heuristics.dataHandler.minBlock else 0                     # Get currently set highest block by user or (default) 0
         }
     }
 
@@ -102,3 +106,42 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
             "resultsGraph" : resultsGraph
         }
     )
+
+# Get JSON list of crypto exchanges
+@app.get("/exchList", response_class=JSONResponse)
+async def getExchList():
+    return heuristics.exchAddrs
+
+# Edit given exchange addr from JSON list
+@app.post("/editAdr", response_class=JSONResponse)
+async def editExchAddr(targetAddr: str = "", newAddr: str ="", newValue: str = ""):
+    try:
+        if targetAddr not in heuristics.exchAddrs:
+            raise KeyError("Invalid key")
+
+        # Remove it
+        curVal = heuristics.exchAddrs.pop(targetAddr)
+        # Replace it with new key and value (if any)
+        heuristics.exchAddrs[newAddr] = newValue if newValue else curVal
+    except Exception as e:
+        return {
+            "result" : e
+        }
+    else:
+        return {
+            "result" : "success"
+        }
+
+# Delete given exchange addr from JSON list
+@app.post("/deleteAdr", response_class=JSONResponse)
+async def deleteExchAddr(targetAddr: str = ""):
+    try:
+        heuristics.exchAddrs.pop(targetAddr)
+    except Exception as e:
+        return {
+            "result" : e
+        }
+    else:
+        return {
+            "result" : "success"
+        }

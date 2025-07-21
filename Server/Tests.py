@@ -112,7 +112,7 @@ def test_NebulaInit():
 @pytest.mark.asyncio
 async def test_TrezorSyncDate():
     testHelper = HelperClass()
-    syncDate = await testHelper.heuristics.api.trezor.getCurrentSyncDate()
+    clientData = await testHelper.heuristics.api.trezor.getCurrentClientData()
 
     # Check blockbook is up
-    assert syncDate != ";"
+    assert clientData is not None

@@ -1,27 +1,35 @@
-function showRangeValue(rangeElement, exchLen) {
+/**
+ * TODO:
+ * Menu update function
+ * actions in tables (txs + adrs)
+ * auto hidden of menu widget on outside click
+ * tests
+ */
+
+function showRangeValue (rangeElement, exchLen) {
     document.getElementById("refreshLabel").innerText = rangeElement.value + " %";
     document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElement.value / 100));
 }
 
-function triggerMenu() {
+function triggerMenu () {
     const form = document.getElementById("refreshForm");
     form.style.display = (form.style.display === "none") ? "block" : "none";
 }
 
-function triggerAboutText() {
+function triggerAboutText () {
     const text = document.getElementById("aboutText");
     text.style.display = (text.style.display === "none") ? "block" : "none";
 }
 
-function showElement(elementId) {
+function showElement (elementId) {
     document.getElementById(elementId).style.display = "block";
 }
 
-function hideElement(elementId) {
+function hideElement (elementId) {
     document.getElementById(elementId).style.display = "none";
 }
 
-async function submitRefreshRequest(event) {
+async function submitRefreshRequest (event) {
     event.preventDefault();
     // Show spinner
     showElement("loadSpinner");
@@ -30,8 +38,14 @@ async function submitRefreshRequest(event) {
     const formData = new FormData();
     formData.append("minHeight", document.getElementById("minBlockHeight").value);
     formData.append("maxHeight", document.getElementById("maxBlockHeight").value);
-    formData.append("scope", document.getElementById("refeshScope").value);
-    formData.append("pwd",   CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
+    formData.append("scope"    , document.getElementById("refeshScope").value);
+    formData.append("pwd"      , CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
+
+    // Make sure maxBlock >= minBlock, else show error modal and skip sending to server
+    if (formData.get("maxHeight") < formData.get("minHeight")) {
+        showAlertModal("Invalid values: max. height < min. height");
+        return;
+    }
 
     const response = await fetch("/refreshDB", {
         method: "POST",
@@ -41,23 +55,91 @@ async function submitRefreshRequest(event) {
     // Hide spinner
     hideElement("loadSpinner");
 
+    // Implicit success result
+    var resultText = "Clustering process finished succesfully";
     if (!response.ok) {
-        let defaultError = "Error happened during the clustering process";
+        resultText = "Error happened during the clustering process";
         // Notify user about invalid password provided
         if (response.status === 401)
-            defaultError = "Invalid password provided, try again please...";
-        // Set alert text
-        document.getElementById("alertText").innerText = defaultError;
-        (new bootstrap.Modal(document.getElementById("errorText"))).show();
+            resultText = "Invalid password provided, try again please...";
     }
     else {
-        const { syncDate, addrsCount, exchLen } = await response.json();
+        const { clientData, exchLen, addrsCount } = await response.json();
         // Update menu with new data (no need to refresh entire page)
-        createMenu(document.getElementById("refreshForm"), syncDate, addrsCount, exchLen);
+        updateMenu(clientData, addrsCount, exchLen);
     }
+    showAlertModal(resultText);
 }
 
-function exportJSON() {
+async function showExchList () {
+    // Get JSON list of exchanges from server
+    const response = await fetch("/exchList", {
+        method: "GET"
+    });
+
+    // Change modal's title
+    document.getElementById("sharedModalTitle").value = "List of Used Exchanges";
+
+    const exchList = await response.json();
+    createExchListTable(exchList)
+        // Reuse modal for showing edge's txs
+        .render(document.getElementById("sharedModalBody"));
+}
+
+function showEditModal (curAddr, curExchName) {
+    // Prepare edit modal with current values
+    document.getElementById("editModalAddr").value       = curAddr;
+    document.getElementById("editModalAddr").placeholder = curAddr; // Keep original addr as placeholder for editExchAddr() call
+    document.getElementById("editModalAddrName").value   = curExchName;
+
+    // Show modal to user
+    (new bootstrap.Modal(document.getElementById("editExchAddrModal"))).show();
+}
+
+async function editExchAddr () {
+    // Send request to server
+    const response = await fetch("/editAdr", {
+        method: "POST",
+        body  : JSON.stringify({
+            targetAddr : document.getElementById("editModalAddr").placeholder, // Stores original addr (see above in showEditModal())
+            newAddr    : document.getElementById("editModalAddr").value,
+            newValue   : document.getElementById("editModalAddrName").value
+        })
+    });
+
+    // Reshow exchs modal with new values
+    showExchList();
+
+    // Show result modal for user
+    showAlertModal(
+        `Edit exchange address ${curAddr}: ${response.get("result", "unknown")}`
+    );
+}
+
+async function deleteExchAdr (curAddr) {
+    // Send request to server
+    const response = await fetch("/deleteAdr", {
+        method: "POST",
+        body  : JSON.stringify({
+            targetAddr: addr
+        })
+    });
+
+    // Reshow exchs modal with new values
+    showExchList();
+
+    // Show result modal for user
+    showAlertModal(
+        `Delete exchange address ${curAddr}: ${response.get("result", "unknown")}`
+    );
+}
+
+function showAlertModal (text) {
+    document.getElementById("alertText").innerText = text;
+    (new bootstrap.Modal(document.getElementById("errorText"))).show();
+}
+
+function exportJSON () {
     // When exporting, prefer selected nodes, default is all nodes
     downloadFile(
         "data.json",
@@ -67,7 +149,7 @@ function exportJSON() {
     );
 }
 
-function exportCSV() {
+function exportCSV () {
     header = ["nodes"]
     // When exporting, prefer selected nodes, default is all nodes
     downloadFile(
@@ -76,7 +158,7 @@ function exportCSV() {
     );
 }
 
-function downloadFile(filename, content) {
+function downloadFile (filename, content) {
     /**
      * Function below, was taken from:
      * https://flexiple.com/javascript/download-flle-using-javascript
@@ -91,7 +173,7 @@ function downloadFile(filename, content) {
     link.click();
 }
 
-function copyToClipboard(value) {
+function copyToClipboard (value) {
     /**
      * Function below, was taken from:
      * https://stackoverflow.com/a/33928558/12801311
@@ -113,7 +195,7 @@ function copyToClipboard(value) {
     document.body.removeChild(element);
 }
 
-function copyDonateText() {
+function copyDonateText () {
     copyToClipboard("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5");
     // Append it to existing element
     const element = document.getElementById("donateText");
@@ -127,7 +209,7 @@ function copyDonateText() {
     }, 1000);
 }
 
-function triggerLeftRow(whichBtn) {
+function triggerLeftRow (whichBtn) {
     // Change visibility of outter trigger button
     const btn = document.getElementById("outterBtn");
     btn.style.display = (whichBtn === "innerBtn") ? "block" : "none";
@@ -145,7 +227,7 @@ function triggerLeftRow(whichBtn) {
     addrChart.resize();
 }
 
-function setHighlightResultsTableItem(addr, highlight=true) {
+function setHighlightResultsTableItem (addr, highlight=true) {
     // Find it and set proper highlight class
     document.getElementById("dataTable").querySelectorAll(".gridjs-tr").forEach(row => {
         const value = row.innerText.trim();
@@ -204,22 +286,28 @@ function setHighlightResultsTableItem(addr, highlight=true) {
     });
 }
 
-function toggleProceedBtn(pwdValue) {
+function toggleProceedBtn (pwdValue) {
     document.getElementById("proceedBtn").disabled = (pwdValue === "");
 }
 
-function createTxTable() {
+function createTxTable () {
     return new gridjs.Grid({
         columns: [
             {
                 name : "Transaction",
-                attributes: { style: "width: 50%;" }
+                attributes: {
+                    style: "width: 50%;"
+                }
             },
             "Time",
             "Amount",
             {
-                name     : "Show on EtherScan🕵️",
-                formatter: (_, row) => gridjs.html(`<b><a href='https://etherscan.io/tx/${row.cells[0].data}' target='_blank'>Link</a></b>`)
+                name     : "Actions",
+                formatter: (_, row) => {
+                    return gridjs.html(
+                        `<b><a href='https://etherscan.io/tx/${row.cells[0].data}' target='_blank' label='Show on EtherScan'>🕵️</a></b>`
+                    );
+                }
             }
         ],
         data: [],
@@ -231,56 +319,92 @@ function createTxTable() {
     });
 }
 
-function createResultsTable() {
+function createResultsTable () {
     return new gridjs.Grid({
-        columns: ["Entity"],
-        data: Object.keys(nodesParams).map(value => [
-            gridjs.html(`
-                <span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[value].style.color}; border-radius: 2px;"></span>
-                ${value}
-            `)
+        columns: [
+            "Entity"
+        ],
+        data: Object.keys(nodesParams).map(key => [
+            gridjs.html(
+                `<span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[key].style.color}; border-radius: 2px;"></span>
+                ${key}`
+            )
         ]),
+        pagination: {
+            limit: 20
+        },
+        search: true
+    })
+}
+
+function createExchListTable (exchList) {
+    return new gridjs.Grid({
+        columns: [
+            {
+                name : "Exchange address",
+                attributes: {
+                    style: "width: 50%;"
+                }
+            },
+            "Exchange name",
+            {
+                name     : "Actions",
+                formatter: (_, row) => {
+                    return gridjs.html(
+                        `<div style="display: flex; gap: 5px;">
+                            <b><a href='https://etherscan.io/address/${row.cells[0].data}' target='_blank' label='Show on EtherScan'>🔍</a></b>
+                            <b><a onclick='showEditModal(${row.cells[0].data}, ${row.cells[1].data})' label='Edit'>🖉</a></b>
+                            <b><a onclick='deleteExchAdr(${row.cells[0].data})' label='Delete'>🗑️</a></b>
+                        </div>`
+                    );
+                }
+            }
+        ],
+        data: Object.keys(exchList).map(key => {
+            // Key: Exch addr ; Value: Exch name
+            return [key, exchList[key]];
+        }),
         pagination: {
             limit: 20
         },
         resizable: true,
         search   : true
-    })
+    });
 }
 
-function processGraphData() {
+function processGraphData (graphData) {
     return {
         nodes: graphData.nodes.map(node => {
-        // Store node params
-        nodesParams[node.id] = {
-            amount: 0.0, // Initial value
-            type  : node.props.type,
-            style : nodeStyles[node.props.type]
-        };
+            // Store node params
+            nodesParams[node.id] = {
+                amount: 0.0, // Initial value
+                type  : node.props.type,
+                style : nodeStyles[node.props.type]
+            };
 
-        return {
-            ...node,
-            nodename  : node.id,
-            exchname  : node.props.name,
-            symbolSize: nodeStyles[node.props.type].size,
-            category  : node.props.type
-        };
+            return {
+                ...node,
+                nodename  : node.id,
+                exchname  : node.props.name,
+                symbolSize: nodeStyles[node.props.type].size,
+                category  : node.props.type
+            };
         }),
         links: graphData.edges.map(edge => {
-        // Accumulate address Ether amount
-        nodesParams[edge.src].amount += parseFloat(edge.props.amount);
+            // Accumulate address Ether amount
+            nodesParams[edge.src].amount += parseFloat(edge.props.amount);
 
-        return {
-            source: edge.src,
-            target: edge.dst,
-            amount: edge.props.amount,
-            txs   : edge.props.txs
-        };
+            return {
+                source: edge.src,
+                target: edge.dst,
+                amount: edge.props.amount,
+                txs   : edge.props.txs
+            };
         }),
         categories: Object.keys(nodeStyles).map(function (category) {
-        return {
-            name: category
-        };
+            return {
+                name: category
+            };
         })
     };
 }

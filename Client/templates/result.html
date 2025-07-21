@@ -58,7 +58,7 @@
 
 {% block mainCenter %}{% endblock %}
 
-{% block graphCenter %}
+{% block graphCode %}
     {% if resultsGraph == "" %}
         <!-- Handle not found address -->
         <script type="text/javascript">
@@ -103,8 +103,23 @@
             selectedNodes.add(userAddr);
             //************************************//
 
+            // Update modal's title for current context
+            document.getElementById("sharedModalTitle").value = "Edge's Transactions";
+            // Create transactions table (will be filled with each edge's data)
+            var txsTable = createTxTable()
+                .render(document.getElementById("sharedModalBody"));
+            // Create results table
+            createResultsTable()
+                .render(document.getElementById("dataTable"))
+                .on("rowClick", (record) => {
+                    // Extract selected address
+                    const entity = record.srcElement.innerText.trim();
+                    // Toggle node out/in selected ones
+                    setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
+                });
+
             // Gather and parse graph data
-            let graph = processGraphData();
+            let graph = processGraphData(graphData);
             // Apply data and options to graph
             addrChart.setOption({
                 tooltip: {
@@ -122,7 +137,7 @@
                 toolbox: {
                     feature: {
                         restore: {
-                            show: true,
+                            show : true,
                             title: "Re-create"
                         },
                         saveAsImage: {
@@ -153,7 +168,7 @@
                         lineStyle: {
                             width: 10
                         }
-                    }, // ->
+                    }, //           -       >
                     edgeSymbol: ["none", "arrow"]
                 }]
             }).on("click", function (params) { // Add listener for edge clicks
@@ -161,32 +176,19 @@
                     // Update table data
                     txsTable.updateConfig({
                         data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
-                        params.data.txs.split(";").filter(Boolean).map(value => {
-                            return [...value.split(","), null];
-                        })
+                            params.data.txs.split(";").filter(Boolean).map(value => {
+                                return [...value.split(","), null];
+                            })
                     }).forceRender();
 
                     // Show modal
-                    (new bootstrap.Modal(document.getElementById("edgeTxs"))).show();
+                    (new bootstrap.Modal(document.getElementById("sharedModalID"))).show();
                 }
                 else { // Node
                     // Copy node address to clipboard
                     copyToClipboard(params.data.nodename);
                 }
             });
-
-            // Create transactions table (will be filled with each edge data)
-            var txsTable = createTxTable()
-                .render(document.getElementById("edgeTxsBody"));
-            // Create results table
-            var table = createResultsTable()
-                .render(document.getElementById("dataTable"))
-                .on("rowClick", (record) => {
-                    // Extract selected address
-                    const entity = record.srcElement.innerText.trim();
-                    // Toggle node out/in selected ones
-                    setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
-                });
 
             // Display and fill result's charts
             showElement("resCharts");

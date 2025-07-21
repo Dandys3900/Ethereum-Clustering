@@ -59,13 +59,12 @@
                 <!-- Menu contents -->
                 <div class="d-flex justify-content-end position-relative mt-2">
                     <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
-                        {% set values = syncDate.split(";") %}
-                        {% set trezorUp = (syncDate != ";") %}
+                        {% set trezorUp = (clientData is not None) %}
 
                         <div>Blockchain client:</div>
                         {% if trezorUp %}
-                            <div><b>Highest block: </b>{{ values[0] }}</div>
-                            <div><b>Latest sync time: </b>{{ values[1] }}</div>
+                            <div><b>Highest block: </b>{{ clientData["maxBlock"] }}</div>
+                            <div><b>Latest sync time: </b>{{ clientData["syncTime"] }}</div>
                         {% else %}
                             <div style="color: red;">Client unavailable</div>
                         {% endif %}
@@ -77,8 +76,11 @@
                         <div><b>Leafs: </b>{{ addrsCount.leafs }}</div>
                         <hr>
 
-                        <!-- If unable to parse syncDate values, blockbook is probably down, avoid DB refresh-->
-                        <button type="button" class="btn btn-danger" id="doDBrefreshBtn" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                        <button type="button" class="btn btn-primary" onclick="showExchList()">Show used exchanges</button>
+                        <hr>
+
+                        <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
                     </div>
                 </div>
             </div>
@@ -89,6 +91,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">Confirm Database Refresh</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
 
                         <div class="modal-body">
@@ -101,9 +104,9 @@
                             <form id="refreshModalForm">
                                 <div class="d-flex gap-2">
                                     <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
-                                    <input type="number" class="form-control" id="minBlockHeight" min="0" value="0">
+                                    <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ clientData['curBlockVals']['currentMinBlock'] }}">
                                     <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
-                                    <input type="number" class="form-control" id="maxBlockHeight" min="0" value="{{ values[0] }}">
+                                    <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ clientData['curBlockVals']['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}">
                                 </div>
 
                                 <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
@@ -123,17 +126,38 @@
                 </div>
             </div>
 
-            <!-- Dialog showing transactions for given edge -->
-            <div class="modal fade" id="edgeTxs" role="dialog" tabindex="-1">
+            <!-- Dialog showing transactions for given edge or server's list of used exchanges -->
+            <div class="modal fade" id="sharedModalID" role="dialog" tabindex="-1">
                 <div class="modal-dialog" style="max-width: 70%; margin: auto;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edge's Transactions</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 id="sharedModalTitle" class="modal-title"></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
 
-                    <div id="edgeTxsBody" class="modal-body"></div>
+                        <div id="sharedModalBody" class="modal-body"></div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Dialog for editing selected exchange's list record -->
+            <div class="modal fade" id="editExchAddrModal" role="dialog" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 id="sharedModalTitle" class="modal-title">Edit</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" required>
+                            <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()" disabled>Save</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -143,6 +167,7 @@
                     <div class="modal-content">
                         <div class="modal-body">
                             <strong id="alertText">Invalid password provided, try again please...</strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                     </div>
                 </div>
@@ -219,7 +244,7 @@
             </script>
         {% endif %}
 
-        {% block graphCenter %}{% endblock %}
+        {% block graphCode %}{% endblock %}
     </div>
 
     <!-- Page functionality script -->

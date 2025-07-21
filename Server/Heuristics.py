@@ -5,7 +5,7 @@
 ###################################
 
 # Imports
-import json, shelve
+import json, atexit
 from Helpers import Out, Cache
 from .Data_Handler import DataHandler, partial
 from .API import NebulaAPI
@@ -33,6 +33,11 @@ class HeuristicsClass():
         if not Cache.get("leafs_cnt"):
             Cache.set("leafs_cnt", len(self.nebula.getAddrsOfType("leaf")))
         Out.blank("Cache initialized")
+
+        # At exit, write updated JSON exch list back to file
+        atexit.register(
+            lambda: json.dump(self.exchAddrs, open("exchanges.json", "w", encoding="utf-8"), indent=4)
+        )
 
     async def addExchanges(self, scope):
         # Limit amount of processed exchange addrs by given scope

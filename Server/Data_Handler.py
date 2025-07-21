@@ -25,8 +25,8 @@ class DataHandler():
             self.knownDepos = []
             self.knownExchs = []
             # Block limits (set by Heuristics class and by user)
-            self.minBlock = None
-            self.maxBlock = None
+            self.minBlock = 0
+            self.maxBlock = 0
         except Exception as e:
             Out.error(e)
             # Exit on API error
