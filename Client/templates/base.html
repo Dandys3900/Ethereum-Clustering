@@ -19,7 +19,7 @@
     <!-- Icon library -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <!-- Favicon -->
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/static/graphics/favicon.ico" type="image/x-icon">
     <!-- Styles -->
     <link rel="stylesheet" href="/static/CSS/styles.css">
 
@@ -63,24 +63,28 @@
 
                         <div>Blockchain client:</div>
                         {% if trezorUp %}
-                            <div><b>Highest block: </b>{{ clientData["maxBlock"] }}</div>
-                            <div><b>Latest sync time: </b>{{ clientData["syncTime"] }}</div>
+                            <span id="clientUpItems">
+                                <b>Highest block: </b><span id="maxBlockItem">{{ clientData["maxBlock"] }}</span>
+                                <b>Latest sync time: </b><span id="syncTimeItem">{{ clientData["syncTime"] }}</span>
+                            </span>
                         {% else %}
-                            <div style="color: red;">Client unavailable</div>
+                            <span id="clientDownItems">
+                                <div style="color: red;">Client unavailable</div>
+                            </span>
                         {% endif %}
                         <hr>
 
                         <div>Clustered addresses counts:</div>
-                        <div><b>Exchanges: </b>{{ addrsCount.exchanges }}</div>
-                        <div><b>Deposits: </b>{{ addrsCount.deposits }}</div>
-                        <div><b>Leafs: </b>{{ addrsCount.leafs }}</div>
+                        <b>Exchanges: </b><span id="exchCountsItem">{{ addrsCount.exchanges }}</span>
+                        <b>Deposits: </b><span id="deposCountsItem">{{ addrsCount.deposits }}</span>
+                        <b>Leafs: </b><span id="leafsCountsItem">{{ addrsCount.leafs }}</span>
                         <hr>
 
                         <button type="button" class="btn btn-primary" onclick="showExchList()">Show used exchanges</button>
                         <hr>
 
                         <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                        <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
                     </div>
                 </div>
             </div>
@@ -112,7 +116,7 @@
                                 <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
                                 {% set defCount = (exchLen / 2) | int %}
                                 <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
-                                <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue(this)">
+                                <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue({{ exchLen }}, this.value)">
                                 <hr>
 
                                 <div class="d-flex gap-1">

@@ -1,14 +1,12 @@
 /**
  * TODO:
- * Menu update function
- * actions in tables (txs + adrs)
  * auto hidden of menu widget on outside click
  * tests
  */
 
-function showRangeValue (rangeElement, exchLen) {
-    document.getElementById("refreshLabel").innerText = rangeElement.value + " %";
-    document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElement.value / 100));
+function showRangeValue (exchLen, rangeElementValue=50) {
+    document.getElementById("refreshLabel").innerText = `${rangeElementValue} %`;
+    document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElementValue / 100));
 }
 
 function triggerMenu () {
@@ -69,6 +67,31 @@ async function submitRefreshRequest (event) {
         updateMenu(clientData, addrsCount, exchLen);
     }
     showAlertModal(resultText);
+}
+
+function updateMenu (clientData, addrsCount, exchLen) {
+    // Update values non dependant on blockchain client status first
+    document.getElementById("exchCountsItem").innerText  = addrsCount.get("exchanges", 0);
+    document.getElementById("deposCountsItem").innerText = addrsCount.get("deposits", 0);
+    document.getElementById("leafsCountsItem").innerText = addrsCount.get("leafs", 0);
+
+    hideElement("clientUpItems");
+    hideElement("clientDownItems");
+
+    // If clientData is None, client is down, adapt menu to it
+    if (clientData) {
+        showElement("clientUpItems");
+        document.getElementById("maxBlockItem").innerText = clientData.get("maxBlock", 0);
+        document.getElementById("syncTimeItem").innerText = clientData.get("syncTime", "1970-01-01, 00:00");
+
+        // Update refresh modal values as well
+        showRangeValue(exchLen);
+    }
+    else {
+        showElement("clientDownItems");
+    }
+    // Based on above, set click-ability to refresh DB button
+    document.getElementById("refreshDBbutton").disabled = ((clientData) ? true : false);
 }
 
 async function showExchList () {
