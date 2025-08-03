@@ -117,7 +117,8 @@ class HeuristicsClass():
         # Set block limits
         self.dataHandler.minBlock = minHeight if (minHeight !=0) else None
         self.dataHandler.maxBlock = maxHeight if (maxHeight != self.dataHandler.trezor.heighestBlock) else None
-        # If user selected custom scope, we are forced to clear DB and start again to ensure requested block scope
+
+        # If user selected custom scope, we are forced to clear DB and start again to match requested block scope
         if self.dataHandler.minBlock or self.dataHandler.maxBlock:
             Out.warning(f"Custom refresh scope: erasing current DB; selected scope: <{minHeight};{maxHeight}>")
             self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
@@ -126,6 +127,7 @@ class HeuristicsClass():
         await self.addExchanges(scope)
         await self.addDepositAddrs()
         await self.addClusteredAddrs()
+
         # When done, rebuild index with new data
         self.nebula.execNebulaCommand('REBUILD TAG INDEX addrs_index')
 

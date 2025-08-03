@@ -2,21 +2,28 @@
 
 {% block headerLeft %}
     <div class="col position-relative">
+        <!-- Faculty logo -->
+        <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+            <a href="https://www.fit.vut.cz/.en" target="_blank">
+                <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
+            </a>
+        </div>
+
         <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
             <!-- Count of clustered addresses -->
             <div class="card">
-              <div class="card-body d-flex">
-                <i class="bi bi-bounding-box-circles"></i>
-                <h6 id="addrCount" class="card-title"></h6>
-              </div>
+                <div class="card-body d-flex">
+                    <i class="bi bi-bounding-box-circles"></i>
+                    <h6 id="addrCount" class="card-title"></h6>
+                </div>
             </div>
 
             <!-- Amount of Ether used by cluster -->
             <div class="card">
-              <div class="card-body d-flex">
-                <i class="bi bi-bank"></i>
-                <h6 id="usedEther" class="card-title"></h6>
-              </div>
+                <div class="card-body d-flex">
+                    <i class="bi bi-bank"></i>
+                    <h6 id="usedEther" class="card-title"></h6>
+                </div>
             </div>
         </div>
     </div>
@@ -29,8 +36,8 @@
         <hr>
         💡<b>Oh no, what happened?</b> Two explanations, provided address:
         <ol class="list-group list-group-numbered">
-          <li class="list-group-item">Is known exchange (not supported as it would likely show giant clusters)</li>
-          <li class="list-group-item">Is not included in the current database (try refresh it with larger scope)</li>
+            <li class="list-group-item">Is known exchange (not supported as it would likely show giant clusters)</li>
+            <li class="list-group-item">Is not included in the current database (try refresh it with larger scope)</li>
         </ol>
     </div>
 {% endblock %}
@@ -38,18 +45,18 @@
 {% block mainLeft %}
     <div id="outterBtn" class="col-auto pe-0" style="display: none;">
         <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
-        <i class="bi bi-arrow-bar-right"></i>
+            <i class="bi bi-arrow-bar-right"></i>
         </button>
     </div>
 
     <!-- Results table -->
     <div id="results" class="col-md-3 text-nowrap" style="display: none;">
         <div id="exportsBtns" class="gap-3" style="display: block;">
-        <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
-            <i class="bi bi-arrow-bar-left"></i>
-        </button>
-        <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
-        <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
+            <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
+                <i class="bi bi-arrow-bar-left"></i>
+            </button>
+            <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
+            <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
         </div>
 
         <div class="resultsTable" style="width: fit-content;" id="dataTable"></div>
@@ -58,7 +65,7 @@
 
 {% block mainCenter %}{% endblock %}
 
-{% block graphCode %}
+{% block pageJSCode %}
     {% if resultsGraph == "" %}
         <!-- Handle not found address -->
         <script type="text/javascript">
@@ -103,11 +110,9 @@
             selectedNodes.add(userAddr);
             //************************************//
 
-            // Update modal's title for current context
-            document.getElementById("sharedModalTitle").value = "Edge's Transactions";
             // Create transactions table (will be filled with each edge's data)
             var txsTable = createTxTable()
-                .render(document.getElementById("sharedModalBody"));
+                .render(document.getElementById("edgeTxsModalBody"));
             // Create results table
             createResultsTable()
                 .render(document.getElementById("dataTable"))
@@ -182,7 +187,7 @@
                     }).forceRender();
 
                     // Show modal
-                    (new bootstrap.Modal(document.getElementById("sharedModalID"))).show();
+                    (new bootstrap.Modal(document.getElementById("edgeTxsModal"))).show();
                 }
                 else { // Node
                     // Copy node address to clipboard

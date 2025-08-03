@@ -45,4 +45,22 @@
     </div>
 {% endblock %}
 
-{% block graphCode %}{% endblock %}
+{% block pageJSCode %}
+    {% if ongoingRefresh %}
+        <!-- Handle ongoing refresh -->
+        <script type="text/javascript">
+            // Hide content of second row
+            hideElement("secondRow");
+            // Show "Maintenance in progress" image
+            showElement("refreshOn");
+        </script>
+    {% else %}
+        <script type="text/javascript">
+            // Show content of second row (if not already shown)
+            if (document.getElementById("secondRow").style.display === "none")
+                showElement("secondRow");
+            // Hide "Maintenance in progress" image
+            hideElement("refreshOn");
+        </script>
+    {% endif %}
+{% endblock %}

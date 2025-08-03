@@ -16,12 +16,21 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <!-- Icon library -->
+    <!-- Add icon library -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+    <!-- GridJS -->
+    <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
+    <!-- CryptoJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <!-- Favicon -->
     <link rel="icon" href="/static/graphics/favicon.ico" type="image/x-icon">
     <!-- Styles -->
     <link rel="stylesheet" href="/static/CSS/styles.css">
+    <!-- Page functionality script -->
+    <script src="/static/JS/script.js"></script>
 
   </head>
   <body>
@@ -38,59 +47,68 @@
                 </h1>
 
                 <form id="searchForm" class="d-flex" style="width: 100%; margin-bottom: 10px;" action="/search" method="post">
-                    <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000" value="{{ targetAddr }}">
+                    <input class="form-control me-2" type="search" placeholder="Enter Ethereum address" name="targetAddr" required pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" title="f.e. 0X0123456789abcdef9876543210ABCDEF00000000" value="{{ targetAddr }}">
                     <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Search 🔎</button>
                 </form>
 
                 <!-- DB refresh spinner -->
                 <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em; margin-bottom: 0.5em;"></div>
+
+                {% block headerRight %}{% endblock %}
             </div>
 
-            {% block headerRight %}{% endblock %}
-
-            <!-- Menu -->
+            <!-- Menu button -->
             <div class="col">
-                <!-- Menu button -->
                 <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
                     <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
-                    <button class="btn btn-primary" onclick="triggerMenu()"><i class="fa fa-bars"></i> Menu</button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mainMenuModal"><i class="fa fa-bars"></i> Menu</button>
                 </div>
+            </div>
 
-                <!-- Menu contents -->
-                <div class="d-flex justify-content-end position-relative mt-2">
-                    <div id="refreshForm" class="card p-2" style="display: none; width: 45%; position: absolute; z-index: 1000;">
-                        {% set trezorUp = (clientData is not None) %}
+            <!-- Dialog showing menu -->
+            <div class="modal fade" id="mainMenuModal" role="dialog" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Menu</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
 
-                        <div>Blockchain client:</div>
-                        {% if trezorUp %}
-                            <span id="clientUpItems">
-                                <b>Highest block: </b><span id="maxBlockItem">{{ clientData["maxBlock"] }}</span>
-                                <b>Latest sync time: </b><span id="syncTimeItem">{{ clientData["syncTime"] }}</span>
-                            </span>
-                        {% else %}
-                            <span id="clientDownItems">
-                                <div style="color: red;">Client unavailable</div>
-                            </span>
-                        {% endif %}
-                        <hr>
+                        <!-- Menu contents -->
+                        <div class="modal-body">
+                            {% set trezorUp = (clientData is not none) %}
 
-                        <div>Clustered addresses counts:</div>
-                        <b>Exchanges: </b><span id="exchCountsItem">{{ addrsCount.exchanges }}</span>
-                        <b>Deposits: </b><span id="deposCountsItem">{{ addrsCount.deposits }}</span>
-                        <b>Leafs: </b><span id="leafsCountsItem">{{ addrsCount.leafs }}</span>
-                        <hr>
+                            <div>Blockchain client:</div>
+                            {% if trezorUp %}
+                                <span id="clientUpItems">
+                                    <div><b>Highest block: </b><span id="maxBlockItem">{{ clientData["maxBlock"] }}</span></div>
+                                    <div><b>Latest sync time: </b><span id="syncTimeItem">{{ clientData["syncTime"] }}</span></div>
+                                </span>
+                            {% else %}
+                                <span id="clientDownItems">
+                                    <div style="color: red;">Client unavailable</div>
+                                </span>
+                            {% endif %}
+                            <hr>
 
-                        <button type="button" class="btn btn-primary" onclick="showExchList()">Show used exchanges</button>
-                        <hr>
+                            <div>Clustered addresses counts:</div>
+                            <div><b>Exchanges: </b><span id="exchCountsItem">{{ addrsCount.exchanges }}</span></div>
+                            <div><b>Deposits: </b><span id="deposCountsItem">{{ addrsCount.deposits }}</span></div>
+                            <div><b>Leafs: </b><span id="leafsCountsItem">{{ addrsCount.leafs }}</span></div>
+                            <hr>
 
-                        <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
-                        <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                            <div class="d-flex gap-1 justify-content-center">
+                                <button type="button" class="btn btn-primary" onclick="showExchList()">Show exchanges</button>
+                                <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
+                                <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Dialog for DB refresh confirmation -->
-            <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1" aria-hidden="true">
+            <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -102,20 +120,22 @@
                             Database update will start from cached block values. If custom block interval is selected below,
                             update will erase all currently stored values and will trigger complete re-clustering.
                             This action can take hours depending on selected scope.
-                        </div>
+                            <hr>
 
-                        <div class="modal-footer">
                             <form id="refreshModalForm">
+                                Optionally select block height's interval for planned database refresh
+
                                 <div class="d-flex gap-2">
                                     <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
-                                    <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ clientData['curBlockVals']['currentMinBlock'] }}">
+                                    <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" required>
                                     <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
-                                    <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ clientData['curBlockVals']['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}">
+                                    <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" required>
                                 </div>
+                                <hr>
 
-                                <label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label>
+                                <div><label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label></div>
                                 {% set defCount = (exchLen / 2) | int %}
-                                <label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label>
+                                <div><label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label></div>
                                 <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue({{ exchLen }}, this.value)">
                                 <hr>
 
@@ -130,16 +150,54 @@
                 </div>
             </div>
 
-            <!-- Dialog showing transactions for given edge or server's list of used exchanges -->
-            <div class="modal fade" id="sharedModalID" role="dialog" tabindex="-1">
+            <!-- Dialog showing transactions for given edge -->
+            <div class="modal fade" id="edgeTxsModal" role="dialog" tabindex="-1">
                 <div class="modal-dialog" style="max-width: 70%; margin: auto;">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 id="sharedModalTitle" class="modal-title"></h5>
+                            <h5 class="modal-title">Edge's Transactions</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
 
-                        <div id="sharedModalBody" class="modal-body"></div>
+                        <div id="edgeTxsModalBody" class="modal-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dialog showing server's list of used exchanges -->
+            <div class="modal fade" id="exchsListModal" role="dialog" tabindex="-1">
+                <div class="modal-dialog" style="max-width: 50%; margin: auto;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">List of Exchanges</h5>
+                            <div class="vr ms-3 me-1"></div>
+
+                            <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div id="exchsListModalBody" class="modal-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dialog for adding new exchange's list record -->
+            <div class="modal fade" id="addExchAddrModal" role="dialog" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
+                            <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -149,28 +207,28 @@
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 id="sharedModalTitle" class="modal-title">Edit</h5>
+                            <h5 class="modal-title">Edit</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
 
                         <div class="modal-body">
-                            <input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" required>
+                            <input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
                             <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>
                         </div>
 
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()" disabled>Save</button>
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Dialog for wrong entered password -->
-            <div class="modal fade" id="errorText" role="dialog" tabindex="-1">
-                <div class="modal-dialog alert alert-danger">
+            <!-- Dialog with user info -->
+            <div class="modal fade" id="infoModal" role="dialog" tabindex="-1">
+                <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-body">
-                            <strong id="alertText">Invalid password provided, try again please...</strong>
+                            <strong id="infoText"></strong>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                     </div>
@@ -229,29 +287,26 @@
         {% if ongoingRefresh %}
             <!-- Handle ongoing refresh -->
             <script type="text/javascript">
-                // Hide content of second row
-                hideElement("secondRow");
                 // Disable all buttons
                 document.querySelectorAll("button").forEach(button => button.disabled = true);
-                // Show "Maintenance in progress" image
-                showElement("refreshOn");
             </script>
         {% else %}
             <script type="text/javascript">
-                // Show content of second row (if not already shown)
-                if (document.getElementById("secondRow").style.display === "none")
-                showElement("secondRow");
                 // Re-enable all buttons
                 document.querySelectorAll("button").forEach(button => button.enabled = true);
-                // Hide "Maintenance in progress" image
-                hideElement("refreshOn");
             </script>
         {% endif %}
 
-        {% block graphCode %}{% endblock %}
-    </div>
+        <!-- Event listener to show "Home" bnt when not on intro page -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+            const element = document.getElementById("takeMeHome");
+                // If not on home page, show "Home" button
+                element.style.display = (window.location.pathname !== "/") ? "block" : "none";
+            });
+        </script>
 
-    <!-- Page functionality script -->
-    <script src="/static/JS/script.js"></script>
+        {% block pageJSCode %}{% endblock %}
+    </div>
   </body>
 </html>

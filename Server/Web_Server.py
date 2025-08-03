@@ -113,16 +113,38 @@ async def getExchList():
     return heuristics.exchAddrs
 
 # Edit given exchange addr from JSON list
-@app.post("/editAdr", response_class=JSONResponse)
-async def editExchAddr(targetAddr: str = "", newAddr: str ="", newValue: str = ""):
+@app.post("/addAdr", response_class=JSONResponse)
+async def addExchAddr(request: Request):
     try:
-        if targetAddr not in heuristics.exchAddrs:
+        body = await request.json()
+        if body.get("newAddr") in heuristics.exchAddrs:
+            raise KeyError("Address already included")
+
+        # Add new entry
+        heuristics.exchAddrs[body.get("newAddr")] = body.get("newValue")
+    except Exception as e:
+        return {
+            "result" : e
+        }
+    else:
+        return {
+            "result" : "success"
+        }
+
+# Edit given exchange addr from JSON list
+@app.post("/editAdr", response_class=JSONResponse)
+async def editExchAddr(request: Request):
+    try:
+        body = await request.json()
+        if body.get("targetAddr") not in heuristics.exchAddrs:
             raise KeyError("Invalid key")
 
-        # Remove it
-        curVal = heuristics.exchAddrs.pop(targetAddr)
-        # Replace it with new key and value (if any)
-        heuristics.exchAddrs[newAddr] = newValue if newValue else curVal
+        # Update/create new record
+        heuristics.exchAddrs[body.get("newAddr")] = body.get("newValue")
+
+        # If address (key) changed, remove previous item
+        if body.get("targetAddr") != body.get("newAddr"):
+            heuristics.exchAddrs.pop(body.get("targetAddr"))
     except Exception as e:
         return {
             "result" : e
@@ -134,9 +156,10 @@ async def editExchAddr(targetAddr: str = "", newAddr: str ="", newValue: str = "
 
 # Delete given exchange addr from JSON list
 @app.post("/deleteAdr", response_class=JSONResponse)
-async def deleteExchAddr(targetAddr: str = ""):
+async def deleteExchAddr(request: Request):
     try:
-        heuristics.exchAddrs.pop(targetAddr)
+        body = await request.json()
+        heuristics.exchAddrs.pop(body.get("targetAddr"))
     except Exception as e:
         return {
             "result" : e

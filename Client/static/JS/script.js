@@ -1,17 +1,14 @@
 /**
  * TODO:
- * auto hidden of menu widget on outside click
+ * pwd for working with exch addresses
+ * too many <div>s in menus (base modals)
  * tests
+ * TLS
  */
 
 function showRangeValue (exchLen, rangeElementValue=50) {
     document.getElementById("refreshLabel").innerText = `${rangeElementValue} %`;
     document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElementValue / 100));
-}
-
-function triggerMenu () {
-    const form = document.getElementById("refreshForm");
-    form.style.display = (form.style.display === "none") ? "block" : "none";
 }
 
 function triggerAboutText () {
@@ -41,7 +38,7 @@ async function submitRefreshRequest (event) {
 
     // Make sure maxBlock >= minBlock, else show error modal and skip sending to server
     if (formData.get("maxHeight") < formData.get("minHeight")) {
-        showAlertModal("Invalid values: max. height < min. height");
+        showInfoModal("Invalid values: max. height < min. height");
         return;
     }
 
@@ -66,7 +63,7 @@ async function submitRefreshRequest (event) {
         // Update menu with new data (no need to refresh entire page)
         updateMenu(clientData, addrsCount, exchLen);
     }
-    showAlertModal(resultText);
+    showInfoModal(resultText);
 }
 
 function updateMenu (clientData, addrsCount, exchLen) {
@@ -94,19 +91,31 @@ function updateMenu (clientData, addrsCount, exchLen) {
     document.getElementById("refreshDBbutton").disabled = ((clientData) ? true : false);
 }
 
-async function showExchList () {
+async function showExchList (justUpdate=false) {
     // Get JSON list of exchanges from server
     const response = await fetch("/exchList", {
         method: "GET"
     });
-
-    // Change modal's title
-    document.getElementById("sharedModalTitle").value = "List of Used Exchanges";
-
+    // Get JSON format for response
     const exchList = await response.json();
-    createExchListTable(exchList)
-        // Reuse modal for showing edge's txs
-        .render(document.getElementById("sharedModalBody"));
+
+    document.getElementById("exchsListModalBody").innerHTML = "";
+    // Just update table data if set
+    if (justUpdate) {
+        window.exchTable.updateConfig({
+            data: Object.keys(exchList).map(key => {
+                // Key: Exch addr ; Value: Exch name
+                return [key, exchList[key]];
+            })
+        }).forceRender();
+    }
+    else { // Create new table
+        createExchListTable(exchList)
+            .render(document.getElementById("exchsListModalBody"));
+
+        // Show modal
+        (new bootstrap.Modal(document.getElementById("exchsListModal"))).show();
+    }
 }
 
 function showEditModal (curAddr, curExchName) {
@@ -117,6 +126,26 @@ function showEditModal (curAddr, curExchName) {
 
     // Show modal to user
     (new bootstrap.Modal(document.getElementById("editExchAddrModal"))).show();
+}
+
+async function addExchAddr () {
+    // Send request to server
+    const response = await fetch("/addAdr", {
+        method: "POST",
+        body  : JSON.stringify({
+            newAddr  : document.getElementById("addModalAddr").value,
+            newValue : document.getElementById("addModalAddrName").value
+        })
+    });
+
+    // Reshow modal with new values
+    showExchList(justUpdate=true);
+
+    const result = await response.json();
+    // Show result modal for user
+    showInfoModal(
+        `Adding exchange address result: ${result["result"]}`
+    );
 }
 
 async function editExchAddr () {
@@ -130,12 +159,13 @@ async function editExchAddr () {
         })
     });
 
-    // Reshow exchs modal with new values
-    showExchList();
+    // Reshow modal with new values
+    showExchList(justUpdate=true);
 
+    const result = await response.json();
     // Show result modal for user
-    showAlertModal(
-        `Edit exchange address ${curAddr}: ${response.get("result", "unknown")}`
+    showInfoModal(
+        `Edit exchange address result: ${result["result"]}`
     );
 }
 
@@ -144,22 +174,23 @@ async function deleteExchAdr (curAddr) {
     const response = await fetch("/deleteAdr", {
         method: "POST",
         body  : JSON.stringify({
-            targetAddr: addr
+            targetAddr : curAddr
         })
     });
 
     // Reshow exchs modal with new values
-    showExchList();
+    showExchList(justUpdate=true);
 
+    const result = await response.json();
     // Show result modal for user
-    showAlertModal(
-        `Delete exchange address ${curAddr}: ${response.get("result", "unknown")}`
+    showInfoModal(
+        `Delete exchange address result: ${result["result"]}`
     );
 }
 
-function showAlertModal (text) {
-    document.getElementById("alertText").innerText = text;
-    (new bootstrap.Modal(document.getElementById("errorText"))).show();
+function showInfoModal (text) {
+    document.getElementById("infoText").innerText = text;
+    (new bootstrap.Modal(document.getElementById("infoModal"))).show();
 }
 
 function exportJSON () {
@@ -314,7 +345,7 @@ function toggleProceedBtn (pwdValue) {
 }
 
 function createTxTable () {
-    return new gridjs.Grid({
+    return (window.txTable = new gridjs.Grid({
         columns: [
             {
                 name : "Transaction",
@@ -339,11 +370,11 @@ function createTxTable () {
         },
         resizable: true,
         search   : true
-    });
+    }));
 }
 
 function createResultsTable () {
-    return new gridjs.Grid({
+    return (window.resTable = new gridjs.Grid({
         columns: [
             "Entity"
         ],
@@ -357,11 +388,11 @@ function createResultsTable () {
             limit: 20
         },
         search: true
-    })
+    }));
 }
 
-function createExchListTable (exchList) {
-    return new gridjs.Grid({
+function createExchListTable (exchListData) {
+    return (window.exchTable = new gridjs.Grid({
         columns: [
             {
                 name : "Exchange address",
@@ -374,25 +405,25 @@ function createExchListTable (exchList) {
                 name     : "Actions",
                 formatter: (_, row) => {
                     return gridjs.html(
-                        `<div style="display: flex; gap: 5px;">
-                            <b><a href='https://etherscan.io/address/${row.cells[0].data}' target='_blank' label='Show on EtherScan'>🔍</a></b>
-                            <b><a onclick='showEditModal(${row.cells[0].data}, ${row.cells[1].data})' label='Edit'>🖉</a></b>
-                            <b><a onclick='deleteExchAdr(${row.cells[0].data})' label='Delete'>🗑️</a></b>
+                        `<div style="display: flex; gap: 10px; cursor: pointer;">
+                            <b><a href='https://etherscan.io/address/${row.cells[0].data.toLowerCase()}' target='_blank'>🔍</a></b>
+                            <b><a onclick='showEditModal("${row.cells[0].data}", "${row.cells[1].data}")'>🖉</a></b>
+                            <b><a onclick='deleteExchAdr("${row.cells[0].data}")'>🗑️</a></b>
                         </div>`
                     );
                 }
             }
         ],
-        data: Object.keys(exchList).map(key => {
+        data: Object.keys(exchListData).map(key => {
             // Key: Exch addr ; Value: Exch name
-            return [key, exchList[key]];
+            return [key, exchListData[key]];
         }),
         pagination: {
             limit: 20
         },
         resizable: true,
         search   : true
-    });
+    }));
 }
 
 function processGraphData (graphData) {
