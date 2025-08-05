@@ -31,6 +31,8 @@
     <link rel="stylesheet" href="/static/CSS/styles.css">
     <!-- Page functionality script -->
     <script src="/static/JS/script.js"></script>
+    <!-- Page generic content creator -->
+    <script src="/static/JS/contentCreator.js"></script>
 
   </head>
   <body>
@@ -54,12 +56,19 @@
                 <!-- DB refresh spinner -->
                 <div id="loadSpinner" class="spinner-border text-primary" role="status" style="display: none; margin-top: 1.5em; margin-bottom: 0.5em;"></div>
 
-                {% block headerRight %}{% endblock %}
+                {% block headerMiddle %}{% endblock %}
             </div>
+
+            {% block headerRight %}{% endblock %}
 
             <!-- Menu button -->
             <div class="col">
                 <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
+                    {% if loggedIn %}
+                        <span>Logged In ✅</span>
+                    {% else %}
+                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fa fa-sign-in"></i> LogIn</button>
+                    {% endif %}
                     <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mainMenuModal"><i class="fa fa-bars"></i> Menu</button>
                 </div>
@@ -150,90 +159,58 @@
                 </div>
             </div>
 
-            <!-- Dialog showing transactions for given edge -->
-            <div class="modal fade" id="edgeTxsModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog" style="max-width: 70%; margin: auto;">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Edge's Transactions</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
+            <script>
+                // Dialog showing transactions for given edge
+                createModal(
+                    style ="max-width: 70%; margin: auto;",
+                    id    ="edgeTxsModal",
+                    header=`<h5 class="modal-title">Edge's Transactions</h5>`,
+                    bodyId="edgeTxsModalBody" // Create empty body with ID
+                );
 
-                        <div id="edgeTxsModalBody" class="modal-body"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dialog showing server's list of used exchanges -->
-            <div class="modal fade" id="exchsListModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog" style="max-width: 50%; margin: auto;">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">List of Exchanges</h5>
+                // Dialog showing server's list of used exchanges
+                createModal(
+                    style ="max-width: 50%; margin: auto;",
+                    id    ="exchsListModal",
+                    header=`<h5 class="modal-title">List of Exchanges</h5>
                             <div class="vr ms-3 me-1"></div>
+                            <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>`,
+                    bodyId="exchsListModalBody"
+                );
 
-                            <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
+                // Dialog for adding new exchange's list record
+                createModal(
+                    id    ="addExchAddrModal",
+                    header=`<h5 class="modal-title">Add</h5>`,
+                    body  =`<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
+                            <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
+                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
+                );
 
-                        <div id="exchsListModalBody" class="modal-body"></div>
-                    </div>
-                </div>
-            </div>
+                // Dialog for editing selected exchange's list record
+                createModal(
+                    id    ="editExchAddrModal",
+                    header=`<h5 class="modal-title">Edit</h5>`,
+                    body  =`<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
+                            <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
+                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
+                );
 
-            <!-- Dialog for adding new exchange's list record -->
-            <div class="modal fade" id="addExchAddrModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Add</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
+                // Dialog with user info
+                createModal(
+                    id="infoModal",
+                    header=" ", // Add header with default exit btn
+                    body=`<strong id="infoText"></strong>`
+                );
 
-                        <div class="modal-body">
-                            <input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
-                            <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dialog for editing selected exchange's list record -->
-            <div class="modal fade" id="editExchAddrModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Edit</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-
-                        <div class="modal-body">
-                            <input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
-                            <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dialog with user info -->
-            <div class="modal fade" id="infoModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-body">
-                            <strong id="infoText"></strong>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                // Dialog showing login
+                createModal(
+                    id    ="loginModal",
+                    header=`<h5 class="modal-title">LogIn</h5>`,
+                    body  =`<input type="text" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
+                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLoginIn()">Submit</button>`
+                );
+            </script>
         </div>
 
         <!-- Second row: Results table + graph -->
@@ -245,6 +222,8 @@
                     {% block mainCenter %}{% endblock %}
                 </div>
             </div>
+
+            {% block mainRight %}{% endblock %}
         </div>
 
         <!-- Footer -->
@@ -297,7 +276,7 @@
             </script>
         {% endif %}
 
-        <!-- Event listener to show "Home" bnt when not on intro page -->
+        <!-- Event listener to show "Home" btn when not on intro page -->
         <script>
             document.addEventListener("DOMContentLoaded", function() {
             const element = document.getElementById("takeMeHome");

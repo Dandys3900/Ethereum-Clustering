@@ -41,7 +41,7 @@ nebula = heuristics.nebula
 # Flag to determine if refresh is on/off
 ongoingRefresh = False
 
-# Return conext dict based on refresh status
+# Return context dict based on refresh status
 async def getContext():
     global ongoingRefresh
     return {
@@ -59,6 +59,10 @@ async def getContext():
         }
     }
 
+# Check provided pwd validity
+def checkPwd(pwd):
+    return (hashlib.sha512(DB_REFRESH_PWD.encode("utf-8")).hexdigest() == pwd)
+
 # Home page
 @app.get("/", response_class=HTMLResponse)
 async def showHome(request: Request):
@@ -68,13 +72,27 @@ async def showHome(request: Request):
         context = await getContext()
     )
 
+# Try user to login
+@app.post("/logIn", response_class=HTMLResponse)
+async def tryLogIn(request: Request):
+    body = await request.json()
+    if not checkPwd(body.get("pwd")):
+        raise Exception("Invalid password")
+
+    # Set session flag as logged in
+    # TODO:
+    # z jake stranky to posilam
+    # schovat pwd prompt z refresh widgetu
+    # nastavit visibilitu tech ikonek v seznam smenaren
+    pass
+
 # Refresh database
 @app.post("/refreshDB", response_class=JSONResponse)
 async def refreshDB(minHeight: int = Form(...), maxHeight: int = Form(...), scope: int = Form(...), pwd: str = Form(...)):
     global ongoingRefresh
 
     # Check for valid refresh password
-    correctPwd = (hashlib.sha512(DB_REFRESH_PWD.encode("utf-8")).hexdigest() == pwd)
+    correctPwd = checkPwd(pwd)
     # Raise exception to notify client
     if not correctPwd:
         raise HTTPException(status_code=401, detail="Invalid password")

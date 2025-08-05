@@ -1,9 +1,8 @@
 /**
  * TODO:
  * pwd for working with exch addresses
- * too many <div>s in menus (base modals)
- * tests
  * TLS
+ * tests
  */
 
 function showRangeValue (exchLen, rangeElementValue=50) {
@@ -174,7 +173,7 @@ async function deleteExchAdr (curAddr) {
     const response = await fetch("/deleteAdr", {
         method: "POST",
         body  : JSON.stringify({
-            targetAddr : curAddr
+            targetAddr: curAddr
         })
     });
 
@@ -186,6 +185,17 @@ async function deleteExchAdr (curAddr) {
     showInfoModal(
         `Delete exchange address result: ${result["result"]}`
     );
+}
+
+async function doLoginIn () {
+    const pwd = CryptoJS.SHA512(document.getElementById("loginPwd").value).toString();
+
+    await fetch("/logIn", {
+        method: "POST",
+        body  : JSON.stringify({
+            pwd: pwd,
+        })
+    });
 }
 
 function showInfoModal (text) {
@@ -254,7 +264,7 @@ function copyDonateText () {
     // Append it to existing element
     const element = document.getElementById("donateText");
     // Append success icon to text
-    element.innerHTML = "✅" + element.innerHTML;
+    element.innerHTML = `✅ ${element.innerHTML}`;
 
     // Remove info text after 1s
     setTimeout(() => {

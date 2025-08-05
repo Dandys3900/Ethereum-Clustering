@@ -11,12 +11,14 @@
     </div>
 {% endblock %}
 
-{% block headerRight %}
+{% block headerMiddle %}
     <!-- Ongoing refresh (maintenance) -->
     <div id="refreshOn" style="padding-top: 20px; width: 40%; display: none;">
         <img src="/static/graphics/maintenanceOn.png" class="img-fluid">
     </div>
 {% endblock %}
+
+{% block headerRight %}{% endblock %}
 
 {% block mainLeft %}{% endblock %}
 
@@ -44,6 +46,8 @@
         <div class="col"></div>
     </div>
 {% endblock %}
+
+{% block mainRight %}{% endblock %}
 
 {% block pageJSCode %}
     {% if ongoingRefresh %}
