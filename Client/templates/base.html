@@ -31,10 +31,8 @@
     <link rel="stylesheet" href="/static/CSS/styles.css">
     <!-- Page functionality script -->
     <script src="/static/JS/script.js"></script>
-    <!-- Page generic content creator -->
-    <script src="/static/JS/contentCreator.js"></script>
-
   </head>
+
   <body>
     <!-- Main content container -->
     <div class="container-fluid d-flex flex-column min-vh-100">
@@ -107,7 +105,7 @@
                             <hr>
 
                             <div class="d-flex gap-1 justify-content-center">
-                                <button type="button" class="btn btn-primary" onclick="showExchList()">Show exchanges</button>
+                                <button type="button" class="btn btn-primary" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
                                 <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
                                 <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
                             </div>
@@ -149,68 +147,17 @@
                                 <hr>
 
                                 <div class="d-flex gap-1">
-                                    <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                                    {% if not loggedIn %}
+                                        <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                                    {% endif %}
                                     <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
-                                    <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" disabled>Proceed</button>
+                                    <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" {% if not loggedIn %} disabled {% endif %}>Proceed</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <script>
-                // Dialog showing transactions for given edge
-                createModal(
-                    style ="max-width: 70%; margin: auto;",
-                    id    ="edgeTxsModal",
-                    header=`<h5 class="modal-title">Edge's Transactions</h5>`,
-                    bodyId="edgeTxsModalBody" // Create empty body with ID
-                );
-
-                // Dialog showing server's list of used exchanges
-                createModal(
-                    style ="max-width: 50%; margin: auto;",
-                    id    ="exchsListModal",
-                    header=`<h5 class="modal-title">List of Exchanges</h5>
-                            <div class="vr ms-3 me-1"></div>
-                            <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>`,
-                    bodyId="exchsListModalBody"
-                );
-
-                // Dialog for adding new exchange's list record
-                createModal(
-                    id    ="addExchAddrModal",
-                    header=`<h5 class="modal-title">Add</h5>`,
-                    body  =`<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
-                            <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
-                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
-                );
-
-                // Dialog for editing selected exchange's list record
-                createModal(
-                    id    ="editExchAddrModal",
-                    header=`<h5 class="modal-title">Edit</h5>`,
-                    body  =`<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
-                            <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
-                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
-                );
-
-                // Dialog with user info
-                createModal(
-                    id="infoModal",
-                    header=" ", // Add header with default exit btn
-                    body=`<strong id="infoText"></strong>`
-                );
-
-                // Dialog showing login
-                createModal(
-                    id    ="loginModal",
-                    header=`<h5 class="modal-title">LogIn</h5>`,
-                    body  =`<input type="text" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
-                    footer=`<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLoginIn()">Submit</button>`
-                );
-            </script>
         </div>
 
         <!-- Second row: Results table + graph -->
@@ -287,5 +234,61 @@
 
         {% block pageJSCode %}{% endblock %}
     </div>
+
+    <!-- Page generic content creator -->
+    <script src="/static/JS/contentCreator.js"></script>
+    <!-- Render page's modals -->
+    <script>
+        // Dialog showing transactions for given edge
+        createModal({
+            style : "max-width: 70%; margin: auto;",
+            id    : "edgeTxsModal",
+            header: `<h5 class="modal-title">Edge's Transactions</h5>`,
+            bodyId: "edgeTxsModalBody" // Create empty body with ID
+        });
+
+        // Dialog showing server's list of used exchanges
+        createModal({
+            style : "max-width: 50%; margin: auto;",
+            id    : "exchsListModal",
+            header: `<h5 class="modal-title">List of Exchanges</h5>
+                     <div class="vr ms-3 me-1"></div>
+                     <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>`,
+            bodyId: "exchsListModalBody"
+        });
+
+        // Dialog for adding new exchange's list record
+        createModal({
+            id    : "addExchAddrModal",
+            header: `<h5 class="modal-title">Add</h5>`,
+            body  : `<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
+                     <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
+        });
+
+        // Dialog for editing selected exchange's list record
+        createModal({
+            id    : "editExchAddrModal",
+            header: `<h5 class="modal-title">Edit</h5>`,
+            body  : `<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
+                     <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
+        });
+
+        // Dialog with user info
+        createModal({
+            id    : "infoModal",
+            header: " ", // Add header with default exit btn
+            body  : `<strong id="infoText"></strong>`
+        });
+
+        // Dialog showing login
+        createModal({
+            id    : "loginModal",
+            header: `<h5 class="modal-title">LogIn</h5>`,
+            body  : `<input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLoginIn()">Submit</button>`
+        });
+    </script>
   </body>
 </html>

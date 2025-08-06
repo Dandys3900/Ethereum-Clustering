@@ -5,12 +5,12 @@
 ###################################
 
 # Imports
-import os
-import hashlib
+import os, hashlib, secrets
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
 from Server import HeuristicsClass
@@ -24,6 +24,8 @@ DB_REFRESH_PWD = os.getenv("DB_REFRESH_PWD", "")
 
 # Init FastAPI
 app = FastAPI()
+# Add middleware for sessions
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_urlsafe(32))
 # Absolute path to current file parent
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Serve static files
@@ -69,33 +71,24 @@ async def showHome(request: Request):
     return templates.TemplateResponse(
         request = request,
         name    = "intro.html",
-        context = await getContext()
+        context = {
+            **(await getContext()),
+            "loggedIn" : request.session.get("loggedIn", False)
+        }
     )
-
-# Try user to login
-@app.post("/logIn", response_class=HTMLResponse)
-async def tryLogIn(request: Request):
-    body = await request.json()
-    if not checkPwd(body.get("pwd")):
-        raise Exception("Invalid password")
-
-    # Set session flag as logged in
-    # TODO:
-    # z jake stranky to posilam
-    # schovat pwd prompt z refresh widgetu
-    # nastavit visibilitu tech ikonek v seznam smenaren
-    pass
 
 # Refresh database
 @app.post("/refreshDB", response_class=JSONResponse)
-async def refreshDB(minHeight: int = Form(...), maxHeight: int = Form(...), scope: int = Form(...), pwd: str = Form(...)):
+async def refreshDB(request: Request, minHeight: int = Form(...), maxHeight: int = Form(...), scope: int = Form(...), pwd: str = Form(default="")):
     global ongoingRefresh
 
-    # Check for valid refresh password
-    correctPwd = checkPwd(pwd)
-    # Raise exception to notify client
-    if not correctPwd:
-        raise HTTPException(status_code=401, detail="Invalid password")
+    # Omit pwd checks when already loggedIn
+    if not request.session.get("loggedIn", False):
+        # Check for valid refresh password
+        correctPwd = checkPwd(pwd)
+        # Raise exception to notify client
+        if not correctPwd:
+            raise HTTPException(status_code=401, detail="Invalid password")
 
     if not ongoingRefresh:
         ongoingRefresh = True
@@ -121,7 +114,8 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
         context = {
             **(await getContext()),
             "targetAddr"   : targetAddr,
-            "resultsGraph" : resultsGraph
+            "resultsGraph" : resultsGraph,
+            "loggedIn"     : request.session.get("loggedIn", False)
         }
     )
 
@@ -129,6 +123,25 @@ async def searchAddr(request: Request, targetAddr: str = Form(...)):
 @app.get("/exchList", response_class=JSONResponse)
 async def getExchList():
     return heuristics.exchAddrs
+
+# Try user to login
+@app.post("/logIn", response_class=JSONResponse)
+async def tryLogIn(request: Request):
+    try:
+        body = await request.json()
+        if not checkPwd(body.get("pwd")):
+            raise Exception("Invalid password")
+
+        # Set logged in flag for user's session
+        request.session["loggedIn"] = True
+    except Exception as e:
+        return {
+            "result" : e
+        }
+    else:
+        return {
+            "result" : "success"
+        }
 
 # Edit given exchange addr from JSON list
 @app.post("/addAdr", response_class=JSONResponse)

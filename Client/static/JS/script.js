@@ -33,7 +33,9 @@ async function submitRefreshRequest (event) {
     formData.append("minHeight", document.getElementById("minBlockHeight").value);
     formData.append("maxHeight", document.getElementById("maxBlockHeight").value);
     formData.append("scope"    , document.getElementById("refeshScope").value);
-    formData.append("pwd"      , CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
+    // If user already loggedIn, this element doesn't exist
+    if (document.getElementById("refreshPwd"))
+        formData.append("pwd", CryptoJS.SHA512(document.getElementById("refreshPwd").value).toString());
 
     // Make sure maxBlock >= minBlock, else show error modal and skip sending to server
     if (formData.get("maxHeight") < formData.get("minHeight")) {
@@ -90,7 +92,7 @@ function updateMenu (clientData, addrsCount, exchLen) {
     document.getElementById("refreshDBbutton").disabled = ((clientData) ? true : false);
 }
 
-async function showExchList (justUpdate=false) {
+async function showExchList (loggedIn=false, justUpdate=false) {
     // Get JSON list of exchanges from server
     const response = await fetch("/exchList", {
         method: "GET"
@@ -108,9 +110,10 @@ async function showExchList (justUpdate=false) {
             })
         }).forceRender();
     }
-    else { // Create new table
-        createExchListTable(exchList)
-            .render(document.getElementById("exchsListModalBody"));
+    else {
+        if (!window.exchTable)// Create new table
+            createExchListTable(loggedIn, exchList)
+                .render(document.getElementById("exchsListModalBody"));
 
         // Show modal
         (new bootstrap.Modal(document.getElementById("exchsListModal"))).show();
@@ -190,12 +193,21 @@ async function deleteExchAdr (curAddr) {
 async function doLoginIn () {
     const pwd = CryptoJS.SHA512(document.getElementById("loginPwd").value).toString();
 
-    await fetch("/logIn", {
+    const response = await fetch("/logIn", {
         method: "POST",
         body  : JSON.stringify({
             pwd: pwd,
         })
     });
+
+    const result = await response.json();
+    // If login successful, refresh current page to show options for logged in
+    if (result["result"] === "success")
+        window.location.reload();
+    else // Show modal about failed login
+        showInfoModal(
+            `LogIn failed: ${result["result"]}`
+        );
 }
 
 function showInfoModal (text) {
@@ -401,7 +413,7 @@ function createResultsTable () {
     }));
 }
 
-function createExchListTable (exchListData) {
+function createExchListTable (loggedIn, exchListData) {
     return (window.exchTable = new gridjs.Grid({
         columns: [
             {
@@ -411,18 +423,18 @@ function createExchListTable (exchListData) {
                 }
             },
             "Exchange name",
-            {
-                name     : "Actions",
-                formatter: (_, row) => {
-                    return gridjs.html(
-                        `<div style="display: flex; gap: 10px; cursor: pointer;">
-                            <b><a href='https://etherscan.io/address/${row.cells[0].data.toLowerCase()}' target='_blank'>🔍</a></b>
-                            <b><a onclick='showEditModal("${row.cells[0].data}", "${row.cells[1].data}")'>🖉</a></b>
-                            <b><a onclick='deleteExchAdr("${row.cells[0].data}")'>🗑️</a></b>
-                        </div>`
-                    );
-                }
-            }
+            ...(loggedIn ? [{
+                    name     : "Actions",
+                    formatter: (_, row) => {
+                        return gridjs.html(
+                            `<div style="display: flex; gap: 10px; cursor: pointer;">
+                                <b><a href='https://etherscan.io/address/${row.cells[0].data.toLowerCase()}' target='_blank'>🔍</a></b>
+                                <b><a onclick='showEditModal("${row.cells[0].data}", "${row.cells[1].data}")'>🖉</a></b>
+                                <b><a onclick='deleteExchAdr("${row.cells[0].data}")'>🗑️</a></b>
+                            </div>`
+                        );
+                    }
+                }] : [])
         ],
         data: Object.keys(exchListData).map(key => {
             // Key: Exch addr ; Value: Exch name
