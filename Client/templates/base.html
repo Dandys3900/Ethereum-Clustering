@@ -59,103 +59,16 @@
 
             {% block headerRight %}{% endblock %}
 
-            <!-- Menu button -->
+            <!-- Top right options -->
             <div class="col">
                 <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
                     {% if loggedIn %}
-                        <span>Logged In ✅</span>
+                        <button class="btn btn-warning" disabled>✅ Logged In</button>
                     {% else %}
                         <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fa fa-sign-in"></i> LogIn</button>
                     {% endif %}
                     <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mainMenuModal"><i class="fa fa-bars"></i> Menu</button>
-                </div>
-            </div>
-
-            <!-- Dialog showing menu -->
-            <div class="modal fade" id="mainMenuModal" role="dialog" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Menu</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-
-                        <!-- Menu contents -->
-                        <div class="modal-body">
-                            {% set trezorUp = (clientData is not none) %}
-
-                            <div>Blockchain client:</div>
-                            {% if trezorUp %}
-                                <span id="clientUpItems">
-                                    <div><b>Highest block: </b><span id="maxBlockItem">{{ clientData["maxBlock"] }}</span></div>
-                                    <div><b>Latest sync time: </b><span id="syncTimeItem">{{ clientData["syncTime"] }}</span></div>
-                                </span>
-                            {% else %}
-                                <span id="clientDownItems">
-                                    <div style="color: red;">Client unavailable</div>
-                                </span>
-                            {% endif %}
-                            <hr>
-
-                            <div>Clustered addresses counts:</div>
-                            <div><b>Exchanges: </b><span id="exchCountsItem">{{ addrsCount.exchanges }}</span></div>
-                            <div><b>Deposits: </b><span id="deposCountsItem">{{ addrsCount.deposits }}</span></div>
-                            <div><b>Leafs: </b><span id="leafsCountsItem">{{ addrsCount.leafs }}</span></div>
-                            <hr>
-
-                            <div class="d-flex gap-1 justify-content-center">
-                                <button type="button" class="btn btn-primary" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
-                                <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
-                                <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dialog for DB refresh confirmation -->
-            <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Confirm Database Refresh</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-
-                        <div class="modal-body">
-                            Database update will start from cached block values. If custom block interval is selected below,
-                            update will erase all currently stored values and will trigger complete re-clustering.
-                            This action can take hours depending on selected scope.
-                            <hr>
-
-                            <form id="refreshModalForm">
-                                Optionally select block height's interval for planned database refresh
-
-                                <div class="d-flex gap-2">
-                                    <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
-                                    <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" required>
-                                    <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
-                                    <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" required>
-                                </div>
-                                <hr>
-
-                                <div><label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label></div>
-                                {% set defCount = (exchLen / 2) | int %}
-                                <div><label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label></div>
-                                <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue({{ exchLen }}, this.value)">
-                                <hr>
-
-                                <div class="d-flex gap-1">
-                                    {% if not loggedIn %}
-                                        <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
-                                    {% endif %}
-                                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
-                                    <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" {% if not loggedIn %} disabled {% endif %}>Proceed</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -237,7 +150,95 @@
 
     <!-- Page generic content creator -->
     <script src="/static/JS/contentCreator.js"></script>
-    <!-- Render page's modals -->
+
+    <!-- ************* Render page's modals ************* -->
+    <!-- Dialog showing menu -->
+    <div class="modal fade" id="mainMenuModal" role="dialog" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Menu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Menu contents -->
+                <div class="modal-body">
+                    {% set trezorUp = (clientData is not none) %}
+
+                    <div>Blockchain client:</div>
+                    {% if trezorUp %}
+                        <span id="clientUpItems">
+                            <div><b>Highest block: </b><span id="maxBlockItem">{{ clientData["maxBlock"] }}</span></div>
+                            <div><b>Latest sync time: </b><span id="syncTimeItem">{{ clientData["syncTime"] }}</span></div>
+                        </span>
+                    {% else %}
+                        <span id="clientDownItems">
+                            <div style="color: red;">Client unavailable</div>
+                        </span>
+                    {% endif %}
+                    <hr>
+
+                    <div>Clustered addresses counts:</div>
+                    <div><b>Exchanges: </b><span id="exchCountsItem">{{ addrsCount.exchanges }}</span></div>
+                    <div><b>Deposits: </b><span id="deposCountsItem">{{ addrsCount.deposits }}</span></div>
+                    <div><b>Leafs: </b><span id="leafsCountsItem">{{ addrsCount.leafs }}</span></div>
+                    <hr>
+
+                    <div class="d-flex gap-1 justify-content-center">
+                        <button type="button" class="btn btn-primary" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
+                        <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
+                        <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dialog for DB refresh confirmation -->
+    <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Database Refresh</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    Database update will start from cached block values. If custom block interval is selected below,
+                    update will erase all currently stored values and will trigger complete re-clustering.
+                    This action can take hours depending on selected scope.
+                    <hr>
+
+                    <form id="refreshModalForm">
+                        Optionally select block height's interval for planned database refresh
+
+                        <div class="d-flex gap-2">
+                            <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
+                            <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" required>
+                            <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
+                            <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" required>
+                        </div>
+                        <hr>
+
+                        <div><label for="refeshScope" class="form-label">Refresh scope: <b id="refreshLabel">50 %</b></label></div>
+                        {% set defCount = (exchLen / 2) | int %}
+                        <div><label for="refeshScope" class="form-label">Number of addresses: <b id="exchLenLabel">{{ defCount }}</b></label></div>
+                        <input type="range" class="form-range" min="1" max="100" step="1" value="50" id="refeshScope" onmousemove="showRangeValue({{ exchLen }}, this.value)">
+                        <hr>
+
+                        <div class="d-flex gap-1">
+                            {% if not loggedIn %}
+                                <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                            {% endif %}
+                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
+                            <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" {% if not loggedIn %} disabled {% endif %}>Proceed</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Dialog showing transactions for given edge
         createModal({
@@ -286,7 +287,10 @@
         createModal({
             id    : "loginModal",
             header: `<h5 class="modal-title">LogIn</h5>`,
-            body  : `<input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
+            body  : `Being loggedIn as admin provides options to CRUD exchange addresses and perform database
+                     refreshes without providing a password
+                     <hr>
+                     <input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
             footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLoginIn()">Submit</button>`
         });
     </script>

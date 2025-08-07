@@ -1,8 +1,8 @@
 /**
  * TODO:
- * pwd for working with exch addresses
- * TLS
+ * session pwd timeout
  * tests
+ * TLS
  */
 
 function showRangeValue (exchLen, rangeElementValue=50) {
@@ -102,7 +102,7 @@ async function showExchList (loggedIn=false, justUpdate=false) {
 
     document.getElementById("exchsListModalBody").innerHTML = "";
     // Just update table data if set
-    if (justUpdate) {
+    if (justUpdate || window.exchTable) {
         window.exchTable.updateConfig({
             data: Object.keys(exchList).map(key => {
                 // Key: Exch addr ; Value: Exch name
@@ -110,14 +110,13 @@ async function showExchList (loggedIn=false, justUpdate=false) {
             })
         }).forceRender();
     }
-    else {
-        if (!window.exchTable)// Create new table
-            createExchListTable(loggedIn, exchList)
-                .render(document.getElementById("exchsListModalBody"));
-
-        // Show modal
-        (new bootstrap.Modal(document.getElementById("exchsListModal"))).show();
+    else { // Create new table
+        createExchListTable(loggedIn, exchList)
+            .render(document.getElementById("exchsListModalBody"));
     }
+
+    if (!justUpdate) // Show modal
+        (new bootstrap.Modal(document.getElementById("exchsListModal"))).show();
 }
 
 function showEditModal (curAddr, curExchName) {
