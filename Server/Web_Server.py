@@ -143,6 +143,12 @@ async def tryLogIn(request: Request):
             "result" : "success"
         }
 
+# Try user to logout
+@app.post("/logOut")
+async def tryLogIn(request: Request):
+    if request.session["loggedIn"] == True:
+        request.session["loggedIn"] = False
+
 # Edit given exchange addr from JSON list
 @app.post("/addAdr", response_class=JSONResponse)
 async def addExchAddr(request: Request):

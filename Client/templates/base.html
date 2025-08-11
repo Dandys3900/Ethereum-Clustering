@@ -63,9 +63,9 @@
             <div class="col">
                 <div class="d-flex justify-content-end gap-3" style="margin-top: 1.5em;">
                     {% if loggedIn %}
-                        <button class="btn btn-warning" disabled>✅ Logged In</button>
+                        <button id="logOutBtn" class="btn btn-warning" onclick="doLogOut()"><i class="fa fa-sign-out"></i> Log-Out</button>
                     {% else %}
-                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fa fa-sign-in"></i> LogIn</button>
+                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fa fa-sign-in"></i> Log-In</button>
                     {% endif %}
                     <button id="takeMeHome" class="btn btn-warning" onclick="location.href='/'"><i class="fa fa-home"></i> Home</button>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mainMenuModal"><i class="fa fa-bars"></i> Menu</button>
@@ -89,16 +89,10 @@
         <!-- Footer -->
         <footer class="py-2 mt-auto position-relative">
             <div class="container">
-                <!-- About text and button -->
-                <div id="aboutText" class="alert alert-primary position-absolute" style="width: 300px; display: none; z-index: 1000; bottom: 88%;">
-                    Created as part of a bachelor thesis at Brno University of Technology by <b>Tomáš Daniel</b>.
-                    Academic year 2024/25, supervised by Ing. Jan Zavřel.
-                </div>
-
                 <div class="row">
                     <!-- Top row -->
                     <div class="col d-flex justify-content-between">
-                    <button class="btn btn-warning" onclick="triggerAboutText()">About ℹ️</button>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#aboutMeModal">About ℹ️</button>
 
                     <!-- Donate text -->
                     <div id="donateText" class="text-md-end mt-2">
@@ -185,7 +179,7 @@
                     <hr>
 
                     <div class="d-flex gap-1 justify-content-center">
-                        <button type="button" class="btn btn-primary" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
                         <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
                         <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
                     </div>
@@ -214,9 +208,9 @@
 
                         <div class="d-flex gap-2">
                             <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
-                            <input type="number" class="form-control" id="minBlockHeight" min="0" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" required>
+                            <input type="number" class="form-control" id="minBlockHeight" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" oninput="handleBlockInput(this)" required>
                             <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
-                            <input type="number" class="form-control" id="maxBlockHeight" min="0" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" required>
+                            <input type="number" class="form-control" id="maxBlockHeight" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" oninput="handleBlockInput(this)" required>
                         </div>
                         <hr>
 
@@ -254,7 +248,7 @@
             id    : "exchsListModal",
             header: `<h5 class="modal-title">List of Exchanges</h5>
                      <div class="vr ms-3 me-1"></div>
-                     <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>`,
+                     {% if loggedIn %} <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button> {% endif %}`,
             bodyId: "exchsListModalBody"
         });
 
@@ -262,7 +256,7 @@
         createModal({
             id    : "addExchAddrModal",
             header: `<h5 class="modal-title">Add</h5>`,
-            body  : `<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" required>
+            body  : `<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" style="mb-2" required>
                      <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
             footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
         });
@@ -271,7 +265,7 @@
         createModal({
             id    : "editExchAddrModal",
             header: `<h5 class="modal-title">Edit</h5>`,
-            body  : `<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" required>
+            body  : `<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" style="mb-2" required>
                      <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
             footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
         });
@@ -286,12 +280,20 @@
         // Dialog showing login
         createModal({
             id    : "loginModal",
-            header: `<h5 class="modal-title">LogIn</h5>`,
-            body  : `Being loggedIn as admin provides options to CRUD exchange addresses and perform database
+            header: `<h5 class="modal-title">Log-In</h5>`,
+            body  : `Being logged-in as admin provides options to CRUD exchange addresses and perform database
                      refreshes without providing a password
                      <hr>
                      <input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
-            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLoginIn()">Submit</button>`
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLogIn()">Submit</button>`
+        });
+
+        // Dialog showing info about project
+        createModal({
+            id    : "aboutMeModal",
+            header: `<h5 class="modal-title">About this project</h5>`,
+            body  : `Created as part of a bachelor thesis at Brno University of Technology by <b>Tomáš Daniel</b>.
+                     Academic year 2024/25, supervised by Ing. Jan Zavřel.`
         });
     </script>
   </body>

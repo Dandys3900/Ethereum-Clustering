@@ -116,3 +116,8 @@ async def test_TrezorSyncDate():
 
     # Check blockbook is up
     assert clientData is not None
+
+# tests:
+    # working with exch addrs - add, edit, delete
+    # logged in and check options are present, otherwise not
+    # try do db refresh with wrong values

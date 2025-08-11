@@ -1,6 +1,6 @@
 /**
  * TODO:
- * session pwd timeout
+ * limist in refresh form on client side
  * tests
  * TLS
  */
@@ -8,11 +8,6 @@
 function showRangeValue (exchLen, rangeElementValue=50) {
     document.getElementById("refreshLabel").innerText = `${rangeElementValue} %`;
     document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElementValue / 100));
-}
-
-function triggerAboutText () {
-    const text = document.getElementById("aboutText");
-    text.style.display = (text.style.display === "none") ? "block" : "none";
 }
 
 function showElement (elementId) {
@@ -189,24 +184,42 @@ async function deleteExchAdr (curAddr) {
     );
 }
 
-async function doLoginIn () {
-    const pwd = CryptoJS.SHA512(document.getElementById("loginPwd").value).toString();
-
+async function doLogIn () {
     const response = await fetch("/logIn", {
         method: "POST",
         body  : JSON.stringify({
-            pwd: pwd,
+            pwd: CryptoJS.SHA512(document.getElementById("loginPwd").value).toString(),
         })
     });
 
     const result = await response.json();
     // If login successful, refresh current page to show options for logged in
     if (result["result"] === "success")
+    {
         window.location.reload();
+
+        const logOutElement = document.getElementById("logOutBtn");
+        // Append success icon to text
+        logOutElement.innerHTML += "✅";
+        // Remove that icon after 1s
+        setTimeout(() => {
+            // Set substring effectively removing added green tick icon
+            logOutElement.innerHTML = String(element.innerHTML).substring(0);
+        }, 1000);
+    }
     else // Show modal about failed login
         showInfoModal(
-            `LogIn failed: ${result["result"]}`
+            `Log-In failed: ${result["result"]}`
         );
+}
+
+async function doLogOut () {
+    await fetch("/logOut", {
+        method: "POST"
+    });
+
+    // Refresh to show basic options
+    window.location.reload();
 }
 
 function showInfoModal (text) {
@@ -272,11 +285,11 @@ function copyToClipboard (value) {
 
 function copyDonateText () {
     copyToClipboard("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5");
+
     // Append it to existing element
     const element = document.getElementById("donateText");
     // Append success icon to text
     element.innerHTML = `✅ ${element.innerHTML}`;
-
     // Remove info text after 1s
     setTimeout(() => {
         // Set substring effectively removing added green tick icon
@@ -363,6 +376,20 @@ function setHighlightResultsTableItem (addr, highlight=true) {
 
 function toggleProceedBtn (pwdValue) {
     document.getElementById("proceedBtn").disabled = (pwdValue === "");
+}
+
+function handleBlockInput (inputElement) {
+    // Store element's current value
+    const curValue = inputElement.value;
+
+    if (curValue < 0 || curValue === "")
+        inputElement.value = 0;
+    if (curValue > inputElement.max)
+        inputElement.value = inputElement.max;
+    if (inputElement.id === "minBlockHeight" && curValue > document.getElementById("maxBlockHeight").value)
+        inputElement.value = document.getElementById("maxBlockHeight").value;
+    if (inputElement.id === "maxBlockHeight" && curValue < document.getElementById("minBlockHeight").value)
+        inputElement.value = document.getElementById("minBlockHeight").value;
 }
 
 function createTxTable () {
