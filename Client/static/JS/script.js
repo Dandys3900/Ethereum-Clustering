@@ -1,7 +1,5 @@
 /**
  * TODO:
- * limist in refresh form on client side
- * tests
  * TLS
  */
 
@@ -25,8 +23,8 @@ async function submitRefreshRequest (event) {
 
     // Create form and append extracted value to it
     const formData = new FormData();
-    formData.append("minHeight", document.getElementById("minBlockHeight").value);
-    formData.append("maxHeight", document.getElementById("maxBlockHeight").value);
+    formData.append("minHeight", document.getElementById("minBlockHeight").value  || "0");
+    formData.append("maxHeight", document.getElementById("maxBlockHeight").value) || "0";
     formData.append("scope"    , document.getElementById("refeshScope").value);
     // If user already loggedIn, this element doesn't exist
     if (document.getElementById("refreshPwd"))
@@ -124,6 +122,12 @@ function showEditModal (curAddr, curExchName) {
     (new bootstrap.Modal(document.getElementById("editExchAddrModal"))).show();
 }
 
+function handleServerResponse (response, modalToHideName) {
+    // If succesful, hide corresponding modal, otherwise, keep it for further interaction
+    if (response["result"] === "success")
+        (bootstrap.Modal.getInstance(document.getElementById(modalToHideName))).hide();
+}
+
 async function addExchAddr () {
     // Send request to server
     const response = await fetch("/addAdr", {
@@ -138,6 +142,7 @@ async function addExchAddr () {
     showExchList(justUpdate=true);
 
     const result = await response.json();
+    handleServerResponse(result, "addExchAddrModal");
     // Show result modal for user
     showInfoModal(
         `Adding exchange address result: ${result["result"]}`
@@ -155,10 +160,13 @@ async function editExchAddr () {
         })
     });
 
-    // Reshow modal with new values
-    showExchList(justUpdate=true);
-
     const result = await response.json();
+    handleServerResponse(result, "editExchAddrModal");
+
+    // Reshow modal with new values
+    if (result["result"] === "success")
+        showExchList(justUpdate=true);
+
     // Show result modal for user
     showInfoModal(
         `Edit exchange address result: ${result["result"]}`
@@ -174,7 +182,7 @@ async function deleteExchAdr (curAddr) {
         })
     });
 
-    // Reshow exchs modal with new values
+    // Reshow modal with new values
     showExchList(justUpdate=true);
 
     const result = await response.json();
@@ -197,13 +205,12 @@ async function doLogIn () {
     if (result["result"] === "success")
     {
         window.location.reload();
-
         const logOutElement = document.getElementById("logOutBtn");
         // Append success icon to text
         logOutElement.innerHTML += "✅";
         // Remove that icon after 1s
         setTimeout(() => {
-            // Set substring effectively removing added green tick icon
+            // Substring effectively removing added green tick icon
             logOutElement.innerHTML = String(element.innerHTML).substring(0);
         }, 1000);
     }
@@ -220,6 +227,34 @@ async function doLogOut () {
 
     // Refresh to show basic options
     window.location.reload();
+}
+
+async function uploadExchAddrs () {
+    // Parse form data (JSON file + options)
+    const fileInput = document.getElementById("fileSelect");
+    const option = document.getElementById("appendOption").checked ? "append" : "override";
+
+    // Create form and append extracted values to it
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("option", option);
+
+    const response = await fetch("/uploadJSON", {
+        method: "POST",
+        body  : formData
+    });
+
+    const result = await response.json();
+    handleServerResponse(result, "uploadJSONModal");
+
+    // Reshow modal with new values
+    if (result["result"] === "success")
+        showExchList(justUpdate=true);
+
+    // Show result modal for user
+    showInfoModal(
+        `JSON file upload result: ${result["result"]}`
+    );
 }
 
 function showInfoModal (text) {
@@ -374,15 +409,15 @@ function setHighlightResultsTableItem (addr, highlight=true) {
     });
 }
 
-function toggleProceedBtn (pwdValue) {
-    document.getElementById("proceedBtn").disabled = (pwdValue === "");
+function toggleBtn (value, elementId) {
+    document.getElementById(elementId).disabled = (value === "");
 }
 
 function handleBlockInput (inputElement) {
     // Store element's current value
-    const curValue = inputElement.value;
+    const curValue = Number(inputElement.value);
 
-    if (curValue < 0 || curValue === "")
+    if (curValue < 0)
         inputElement.value = 0;
     if (curValue > inputElement.max)
         inputElement.value = inputElement.max;

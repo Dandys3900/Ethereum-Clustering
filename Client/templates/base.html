@@ -96,7 +96,7 @@
 
                     <!-- Donate text -->
                     <div id="donateText" class="text-md-end mt-2">
-                        Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateText()"><b>0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5</b></span>❤️
+                        Feel free to donate some Ether:&nbsp;<span style="cursor: pointer;" onclick="copyDonateText()"><b>0X81E11145FC60DA6EBD43EEE7C19E18CE9E21BFD5</b></span>❤️
                     </div>
                     </div>
                 </div>
@@ -181,7 +181,7 @@
                     <div class="d-flex gap-1 justify-content-center">
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" onclick="showExchList({{ 'true' if loggedIn else 'false' }})">Show exchanges</button>
                         <!-- If unable to parse clientData values, blockbook is probably down, avoid DB refresh-->
-                        <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefresh" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
+                        <button id="refreshDBbutton" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmRefreshModal" {% if not trezorUp %} disabled {% endif %}>Refresh database</button>
                     </div>
                 </div>
             </div>
@@ -189,7 +189,7 @@
     </div>
 
     <!-- Dialog for DB refresh confirmation -->
-    <div class="modal fade" id="confirmRefresh" role="dialog" tabindex="-1">
+    <div class="modal fade" id="confirmRefreshModal" role="dialog" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -206,11 +206,12 @@
                     <form id="refreshModalForm">
                         Optionally select block height's interval for planned database refresh
 
+                        <div><label for="refeshScope" class="form-label">Current block scope: <b>{{ curBlockVals['currentMinBlock'] }}</b> -> <b>{{ curBlockVals['currentMaxBlock'] }}</b></label></div>
                         <div class="d-flex gap-2">
                             <label for="minBlockHeight" class="form-label"><b>Min:</b> </label>
-                            <input type="number" class="form-control" id="minBlockHeight" max="{{ clientData['maxBlock'] }}" value="{{ curBlockVals['currentMinBlock'] }}" oninput="handleBlockInput(this)" required>
+                            <input type="number" class="form-control" id="minBlockHeight" max="{{ clientData['maxBlock'] }}" value="0" oninput="handleBlockInput(this)" required>
                             <label for="maxBlockHeight" class="form-label"><b>Max:</b> </label>
-                            <input type="number" class="form-control" id="maxBlockHeight" max="{{ curBlockVals['currentMaxBlock'] }}" value="{{ clientData['maxBlock'] }}" oninput="handleBlockInput(this)" required>
+                            <input type="number" class="form-control" id="maxBlockHeight" max="{{ clientData['maxBlock'] }}" value="{{ clientData['maxBlock'] }}" oninput="handleBlockInput(this)" required>
                         </div>
                         <hr>
 
@@ -222,12 +223,51 @@
 
                         <div class="d-flex gap-1">
                             {% if not loggedIn %}
-                                <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleProceedBtn(this.value)" required>
+                                <input type="password" maxlength="30" class="form-control me-2" id="refreshPwd" placeholder="Enter password" oninput="toggleBtn(this.value, 'proceedBtn')" required>
                             {% endif %}
                             <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Abort</button>
                             <button id="proceedBtn" type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="submitRefreshRequest(event)" {% if not loggedIn %} disabled {% endif %}>Proceed</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dialog uploading exchange address(es) -->
+    <div class="modal fade" id="uploadJSONModal" role="dialog" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="jsonUploadModalLabel">Upload JSON File</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    Extend or override current list of exchanges with Your very own data.
+
+                    <form id="jsonUploadForm">
+                        <div class="mb-3">
+                            <label for="fileSelect" class="form-label">Choose JSON File</label>
+                            <input class="form-control" type="file" id="fileSelect" accept=".json" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Upload Options</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="appendOption" name="uploadOption" value="append" checked>
+                                <label class="form-check-label" for="appendOption">Append to current values</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="overrideOption" name="uploadOption" value="override">
+                                <label class="form-check-label" for="overrideOption">Override current values</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="uploadExchAddrs()">Upload</button>
                 </div>
             </div>
         </div>
@@ -242,39 +282,11 @@
             bodyId: "edgeTxsModalBody" // Create empty body with ID
         });
 
-        // Dialog showing server's list of used exchanges
-        createModal({
-            style : "max-width: 50%; margin: auto;",
-            id    : "exchsListModal",
-            header: `<h5 class="modal-title">List of Exchanges</h5>
-                     <div class="vr ms-3 me-1"></div>
-                     {% if loggedIn %} <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button> {% endif %}`,
-            bodyId: "exchsListModalBody"
-        });
-
-        // Dialog for adding new exchange's list record
-        createModal({
-            id    : "addExchAddrModal",
-            header: `<h5 class="modal-title">Add</h5>`,
-            body  : `<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" style="mb-2" required>
-                     <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
-            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
-        });
-
-        // Dialog for editing selected exchange's list record
-        createModal({
-            id    : "editExchAddrModal",
-            header: `<h5 class="modal-title">Edit</h5>`,
-            body  : `<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" style="mb-2" required>
-                     <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
-            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
-        });
-
         // Dialog with user info
         createModal({
             id    : "infoModal",
             header: " ", // Add header with default exit btn
-            body  : `<strong id="infoText"></strong>`
+            body  : `<div class="text-center"><strong id="infoText"></strong></div>`
         });
 
         // Dialog showing login
@@ -282,10 +294,10 @@
             id    : "loginModal",
             header: `<h5 class="modal-title">Log-In</h5>`,
             body  : `Being logged-in as admin provides options to CRUD exchange addresses and perform database
-                     refreshes without providing a password
+                     refreshes without providing a password again.
                      <hr>
-                     <input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" required>`,
-            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLogIn()">Submit</button>`
+                     <input type="password" id="loginPwd" class="form-control me-2" placeholder="Enter password" oninput="toggleBtn(this.value, 'submitLogId')" required>`,
+            footer: `<button type="button" id="submitLogId" class="btn btn-primary" data-bs-dismiss="modal" onclick="doLogIn()" disabled>Submit</button>`
         });
 
         // Dialog showing info about project
@@ -294,6 +306,37 @@
             header: `<h5 class="modal-title">About this project</h5>`,
             body  : `Created as part of a bachelor thesis at Brno University of Technology by <b>Tomáš Daniel</b>.
                      Academic year 2024/25, supervised by Ing. Jan Zavřel.`
+        });
+
+        // Dialog showing server's list of used exchanges
+        createModal({
+            style : "max-width: 50%; margin: auto;",
+            id    : "exchsListModal",
+            header: `<h5 class="modal-title">List of Exchanges</h5>
+                    <div class="vr ms-3 me-1"></div>
+                    {% if loggedIn %}
+                        <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>
+                        <button class="btn" data-bs-toggle="modal" data-bs-target="#uploadJSONModal"><i class="fa fa-upload"></i></button>
+                    {% endif %}`,
+            bodyId: "exchsListModalBody"
+        });
+
+        // Dialog for adding new exchange's list record
+        createModal({
+            id    : "addExchAddrModal",
+            header: `<h5 class="modal-title">Add</h5>`,
+            body  : `<input type="text" id="addModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" placeholder="Ethereum address" style="mb-2" required>
+                    <input type="text" id="addModalAddrName" maxlength="32" class="form-control me-2" placeholder="Exchange's name" required>`,
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="addExchAddr()">Add</button>`
+        });
+
+        // Dialog for editing selected exchange's list record
+        createModal({
+            id    : "editExchAddrModal",
+            header: `<h5 class="modal-title">Edit</h5>`,
+            body  : `<input type="text" id="editModalAddr" class="form-control me-2" pattern="^(0x|0X)[0-9A-Fa-f]{40}$" maxlength="42" style="mb-2" required>
+                    <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
+            footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
         });
     </script>
   </body>

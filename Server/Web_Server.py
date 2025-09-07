@@ -5,12 +5,13 @@
 ###################################
 
 # Imports
-import os, hashlib, secrets
-from fastapi import FastAPI, Request, Form, HTTPException
+import os, hashlib, secrets, json
+from fastapi import FastAPI, Request, Form, HTTPException, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from jsonschema import validate, ValidationError
 from pathlib import Path
 from dotenv import load_dotenv
 from Server import HeuristicsClass
@@ -43,6 +44,17 @@ nebula = heuristics.nebula
 # Flag to determine if refresh is on/off
 ongoingRefresh = False
 
+# Schema for valid JSON exch list: "str : str, ..." and no nested objects
+schema = {
+    "type": "object",
+    "patternProperties": {
+        ".*": {
+            "type": ["string"]
+        }
+    },
+    "additionalProperties": False
+}
+
 # Return context dict based on refresh status
 async def getContext():
     global ongoingRefresh
@@ -56,10 +68,15 @@ async def getContext():
             "leafs"     : Cache.get("leafs_cnt")
         },
         "curBlockVals" : {
-            "currentMaxBlock" : heuristics.dataHandler.maxBlock if heuristics.dataHandler.maxBlock else trezor.heighestBlock, # Get currently set highest block by user or client's highest
-            "currentMinBlock" : heuristics.dataHandler.minBlock if heuristics.dataHandler.minBlock else 0                     # Get currently set highest block by user or (default) 0
+            "currentMaxBlock" : heuristics.dataHandler.maxBlock if heuristics.dataHandler.maxBlock else 0, # Get currently set highest block by user or (default) 0
+            "currentMinBlock" : heuristics.dataHandler.minBlock if heuristics.dataHandler.minBlock else 0  # Get currently set highest block by user or (default) 0
         }
     }
+
+# Throws exception when user not logged in
+def requireLogIn(request):
+    if not request.session.get("loggedIn", False):
+        raise Exception("Please logIn first")
 
 # Check provided pwd validity
 def checkPwd(pwd):
@@ -136,7 +153,7 @@ async def tryLogIn(request: Request):
         request.session["loggedIn"] = True
     except Exception as e:
         return {
-            "result" : e
+            "result" : str(e)
         }
     else:
         return {
@@ -145,14 +162,15 @@ async def tryLogIn(request: Request):
 
 # Try user to logout
 @app.post("/logOut")
-async def tryLogIn(request: Request):
-    if request.session["loggedIn"] == True:
+async def tryLogOut(request: Request):
+    if request.session.get("loggedIn", False) == True:
         request.session["loggedIn"] = False
 
 # Edit given exchange addr from JSON list
 @app.post("/addAdr", response_class=JSONResponse)
 async def addExchAddr(request: Request):
     try:
+        requireLogIn(request)
         body = await request.json()
         if body.get("newAddr") in heuristics.exchAddrs:
             raise KeyError("Address already included")
@@ -161,7 +179,7 @@ async def addExchAddr(request: Request):
         heuristics.exchAddrs[body.get("newAddr")] = body.get("newValue")
     except Exception as e:
         return {
-            "result" : e
+            "result" : str(e)
         }
     else:
         return {
@@ -172,6 +190,7 @@ async def addExchAddr(request: Request):
 @app.post("/editAdr", response_class=JSONResponse)
 async def editExchAddr(request: Request):
     try:
+        requireLogIn(request)
         body = await request.json()
         if body.get("targetAddr") not in heuristics.exchAddrs:
             raise KeyError("Invalid key")
@@ -184,7 +203,7 @@ async def editExchAddr(request: Request):
             heuristics.exchAddrs.pop(body.get("targetAddr"))
     except Exception as e:
         return {
-            "result" : e
+            "result" : str(e)
         }
     else:
         return {
@@ -195,11 +214,40 @@ async def editExchAddr(request: Request):
 @app.post("/deleteAdr", response_class=JSONResponse)
 async def deleteExchAddr(request: Request):
     try:
+        requireLogIn(request)
         body = await request.json()
         heuristics.exchAddrs.pop(body.get("targetAddr"))
     except Exception as e:
         return {
-            "result" : e
+            "result" : str(e)
+        }
+    else:
+        return {
+            "result" : "success"
+        }
+
+# Upload JSON list of exchanges
+@app.post("/uploadJSON", response_class=JSONResponse)
+async def uploadJSON(request: Request, file: UploadFile = File(...), option: str = Form(...)):
+    try:
+        requireLogIn(request)
+        # Only JSON files are accepted
+        if not file.filename.lower().endswith(".json") or file.content_type != "application/json":
+            raise Exception("Only JSON files are accepted")
+
+        # Read uploaded file's contents
+        contents = await file.read()
+        data = json.loads(contents.decode("utf-8"))
+        validate(instance=data, schema=schema)
+
+        # Interact with current exch list based on selected option
+        if option == "append":
+            heuristics.exchAddrs.update(data)
+        else: # option == "override"
+            heuristics.exchAddrs = data
+    except Exception as e:
+        return {
+            "result" : str(e)
         }
     else:
         return {

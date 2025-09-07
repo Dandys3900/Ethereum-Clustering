@@ -5,10 +5,11 @@
 ###################################
 
 # Imports
-import pytest
+import pytest, os, io, json
 from .Heuristics import HeuristicsClass
 from Server.Web_Server import app
 from fastapi.testclient import TestClient
+from dotenv import load_dotenv
 
 class HelperClass():
     def __init__(self):
@@ -111,13 +112,123 @@ def test_NebulaInit():
 
 @pytest.mark.asyncio
 async def test_TrezorSyncDate():
-    testHelper = HelperClass()
-    clientData = await testHelper.heuristics.api.trezor.getCurrentClientData()
-
+    clientData = await HelperClass().heuristics.api.trezor.getCurrentClientData()
     # Check blockbook is up
     assert clientData is not None
 
-# tests:
-    # working with exch addrs - add, edit, delete
-    # logged in and check options are present, otherwise not
-    # try do db refresh with wrong values
+##################################################
+# Load env variables
+load_dotenv()
+# Load stored password for DB refresh
+DB_REFRESH_PWD = os.getenv("DB_REFRESH_PWD", "")
+
+# Prepare valid test JSON
+testValidJSON = {
+    "newAddr" : "0X0000000000000000000000000000000000000001",
+    "newValue": "MockDEX"
+}
+
+# Generic logIn function
+def logIn(client):
+    response = client.post("/logIn", data={
+        "pwd": DB_REFRESH_PWD
+    })
+    assert response.get("result", "") == "success"
+##################################################
+
+def test_addAddr():
+    global testValidJSON
+    with TestClient(app) as mc:
+        # 1. Try adding adress without being logged in
+        response = mc.post("/addAdr", data=testValidJSON)
+        assert response.get("result", "") == "Please logIn first"
+
+        # 2. Try adding adress when being logged in
+        logIn(mc)
+        response = mc.post("/addAdr", data=testValidJSON)
+        assert response.get("result", "") == "success"
+
+        # Verify succesful addition to the list
+        response = mc.post("/exchList")
+        assert response.get(testValidJSON.get("newAddr", ""))
+
+        # 3. When logged in, try to add invalid address
+        # Not testable from server's POV as input is verified beforewards on client's side UI
+
+def test_editAddr():
+    global DB_REFRESH_PWD, testValidJSON
+    with TestClient(app) as mc:
+        # 1. Try adding adress without being logged in
+        # Skip, already tested with test_addAddr()
+
+        # 2. Try editing adress when being logged in
+        logIn(mc)
+        # Add it first
+        mc.post("/addAdr", data=testValidJSON)
+        response = mc.post("/editAdr", data=testValidJSON)
+        assert response.get("result", "") == "success"
+
+        # Verify succesful edit
+        response = mc.post("/exchList")
+        assert response.get(testValidJSON.get("newAddr", "")) == testValidJSON.get("newValue", "")
+
+def test_deleteAddr():
+    global DB_REFRESH_PWD, testValidJSON
+    with TestClient(app) as mc:
+        # 1. Try deleting adress without being logged in
+        # Skip, already tested with test_addAddr()
+
+        # 2. Try deleting adress when being logged in
+        logIn(mc)
+        # Try deleting non-existing address
+        response = mc.post("/deleteAdr", data=testValidJSON)
+        assert response.get("result", "") != "success"
+        # Add it now
+        mc.post("/addAdr", data=testValidJSON)
+        response = mc.post("/deleteAdr", data=testValidJSON)
+        assert response.get("result", "") == "success"
+
+        # Verify succesful deletion
+        response = mc.post("/exchList")
+        assert response.get(testValidJSON.get("newAddr", "")) == None
+
+def test_JSONFileOperations():
+    # Create test file
+    file = io.BytesIO(json.dumps({
+        "0X0000000000000000000000000000000000000001": "MockDEX"
+    }).encode("utf-8"))
+
+    with TestClient(app) as mc:
+        logIn(mc)
+        # 1. Uploading wrong file type
+        response = mc.post(
+            "/uploadJSON",
+            data ={"file": file},
+            files={"file": ("test.txt", file, "application/crap")}
+        )
+        assert response.get("result", "") != "success"
+
+        # 2. Uploading JSON with nested items + other than string literals
+        badFile = io.BytesIO(json.dumps({
+            "0X0000000000000000000000000000000000000001": {
+                "I hate": "nested JSON"
+            }
+        }).encode("utf-8"))
+        response = mc.post(
+            "/uploadJSON",
+            data ={"file": file},
+            files={"file": ("test.json", badFile, "application/json")}
+        )
+        assert response.get("result", "") != "success"
+
+        # 3. Uploading correct JSON file
+        response = mc.post(
+            "/uploadJSON",
+            data ={"file": file},
+            files={"file": ("test.json", file, "application/json")}
+        )
+        assert response.get("result", "") == "success"
+
+        # Verify succesful append
+        response = mc.post("/exchList")
+        assert response.get("0X0000000000000000000000000000000000000001") == "MockDEX"
