@@ -308,19 +308,6 @@
                      Academic year 2024/25, supervised by Ing. Jan Zavřel.`
         });
 
-        // Dialog showing server's list of used exchanges
-        createModal({
-            style : "max-width: 50%; margin: auto;",
-            id    : "exchsListModal",
-            header: `<h5 class="modal-title">List of Exchanges</h5>
-                    <div class="vr ms-3 me-1"></div>
-                    {% if loggedIn %}
-                        <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>
-                        <button class="btn" data-bs-toggle="modal" data-bs-target="#uploadJSONModal"><i class="fa fa-upload"></i></button>
-                    {% endif %}`,
-            bodyId: "exchsListModalBody"
-        });
-
         // Dialog for adding new exchange's list record
         createModal({
             id    : "addExchAddrModal",
@@ -338,6 +325,35 @@
                     <input type="text" id="editModalAddrName" maxlength="32" class="form-control me-2" required>`,
             footer: `<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="editExchAddr()">Save</button>`
         });
+
+        // Dialog showing server's list of used exchanges
+        createModal({
+            style : "max-width: 50%; margin: auto;",
+            id    : "exchsListModal",
+            header: `<h5 class="modal-title">List of Exchanges</h5>
+                    <div class="vr ms-3 me-1"></div>
+                    <button class="btn" onclick="exportJSON()"><i class="fa fa-download"></i></button>
+                    {% if loggedIn %}
+                        <button class="btn" data-bs-toggle="modal" data-bs-target="#addExchAddrModal"><i class="fa fa-plus"></i></button>
+                        <button class="btn" data-bs-toggle="modal" data-bs-target="#uploadJSONModal"><i class="fa fa-upload"></i></button>
+                    {% endif %}`,
+            bodyId: "exchsListModalBody"
+        });
+
+        var nodesParams;
+        // After creating modal of exchange addresses, prepare listener so we can export it's value by user if requested
+        async function getList () {
+            const response = await fetch("/exchList", {
+                method: "GET"
+            });
+            return await response.json();
+        }
+        getList().then(data => {
+            nodesParams = data;
+        });
+        // List of selected addresses in exchanges modal
+        var selectedNodes = new Set();
+        storeSearchResults("exchsListModalBody", false);
     </script>
   </body>
 </html>

@@ -350,9 +350,9 @@ function triggerLeftRow (whichBtn) {
     addrChart.resize();
 }
 
-function setHighlightResultsTableItem (addr, highlight=true) {
+function setHighlightResultsTableItem (addr, highlight=true, applyToGraph=true, tableId="dataTable") {
     // Find it and set proper highlight class
-    document.getElementById("dataTable").querySelectorAll(".gridjs-tr").forEach(row => {
+    document.getElementById(tableId).querySelectorAll(".gridjs-tr").forEach(row => {
         const value = row.innerText.trim();
 
         if (value.includes(addr)) {
@@ -366,6 +366,10 @@ function setHighlightResultsTableItem (addr, highlight=true) {
             }
         }
     });
+
+    // In case of intro page, don't apply anything to graph
+    if (!applyToGraph)
+        return;
 
     // Update shown cluster count if any selected addresses
     if (selectedNodes.size > 0) {
@@ -406,6 +410,22 @@ function setHighlightResultsTableItem (addr, highlight=true) {
         series: [{
             data: graph.nodes
         }]
+    });
+}
+
+// Resolve absence of "search" event in grid.js
+// Add listener for input events and select ones related to table search element
+function storeSearchResults (targetElement="dataTable", applyToGraph=true) {
+    document.getElementById(targetElement).addEventListener("input", event => {
+        if (event.target.matches(".gridjs-search input")) {
+            selectedNodes.clear();
+            let query = event.target.value.toUpperCase();
+
+            setTimeout(() => {
+                // When empty string -> search ended and clear highlights
+                setHighlightResultsTableItem(query, ((query) ? true : false), applyToGraph, targetElement);
+            }, 50);
+        }
     });
 }
 

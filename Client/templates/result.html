@@ -206,19 +206,9 @@
 
             // Add listener for web-page resize events
             window.addEventListener("resize", addrChart.resize);
-            // Resolve absence of "search" event in grid.js
-            // Add listener for input events and select ones related to table search element
-            document.getElementById("dataTable").addEventListener("input", event => {
-                if (event.target.matches(".gridjs-search input")) {
-                    selectedNodes.clear();
-                    let query = event.target.value.toUpperCase();
 
-                    setTimeout(() => {
-                        // When empty string -> search ended and clear highlights
-                        setHighlightResultsTableItem(query, ((query) ? true : false));
-                    }, 50);
-                }
-            });
+            storeSearchResults("dataTable", true);
+            storeSearchResults("exchsListModalBody", false);
         </script>
     {% endif %}
 {% endblock %}
