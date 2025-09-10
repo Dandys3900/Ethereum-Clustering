@@ -46,12 +46,9 @@ async function submitRefreshRequest (event) {
 
     // Implicit success result
     var resultText = "Clustering process finished succesfully";
-    if (!response.ok) {
-        resultText = "Error happened during the clustering process";
-        // Notify user about invalid password provided
-        if (response.status === 401)
-            resultText = "Invalid password provided, try again please...";
-    }
+    if (!response.ok)
+        resultText = ((response.status === 401) ? "Invalid password provided, try again please..."
+                                                : "Error happened during the clustering process");
     else {
         const { clientData, exchLen, addrsCount } = await response.json();
         // Update menu with new data (no need to refresh entire page)
@@ -319,7 +316,7 @@ function copyToClipboard (value) {
 }
 
 function copyDonateText () {
-    copyToClipboard("0x81E11145Fc60Da6ebD43eee7c19e18Ce9e21Bfd5");
+    copyToClipboard("0X81E11145FC60DA6EBD43EEE7C19E18CE9E21BFD5");
 
     // Append it to existing element
     const element = document.getElementById("donateText");

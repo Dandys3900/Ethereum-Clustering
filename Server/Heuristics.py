@@ -114,13 +114,13 @@ class HeuristicsClass():
     async def updateAddrsDB(self, scope=100, minHeight=0, maxHeight=0):
         Out.warning(f"Beginning refresh of DB with scope: {scope}")
 
-        # Set block limits
-        self.dataHandler.minBlock = minHeight if (minHeight !=0) else None
-        self.dataHandler.maxBlock = maxHeight if (maxHeight != self.dataHandler.trezor.heighestBlock) else None
-
         # If user selected custom scope, we are forced to clear DB and start again to match requested block scope
-        if self.dataHandler.minBlock or self.dataHandler.maxBlock:
-            Out.warning(f"Custom refresh scope: erasing current DB; selected scope: <{minHeight};{maxHeight}>")
+        if (self.dataHandler.minBlock != minHeight) or (self.dataHandler.maxBlock != maxHeight):
+            # Update block limits
+            self.dataHandler.minBlock = minHeight
+            self.dataHandler.maxBlock = maxHeight
+
+            Out.warning(f"Custom refresh scope: erasing current DB; selected block scope: <{minHeight};{maxHeight}>")
             self.nebula.execNebulaCommand('CLEAR SPACE IF EXISTS EthereumClustering')
 
         # Execute pipeline to construct graph

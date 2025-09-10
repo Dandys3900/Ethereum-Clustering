@@ -2,13 +2,6 @@
 
 {% block headerLeft %}
     <div class="col position-relative">
-        <!-- Faculty logo -->
-        <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
-            <a href="https://www.fit.vut.cz/.en" target="_blank">
-                <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
-            </a>
-        </div>
-
         <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
             <!-- Count of clustered addresses -->
             <div class="card">
@@ -80,9 +73,6 @@
         </script>
     {% elif resultsGraph %}
         <script type="text/javascript">
-            // Hide faculty logo and explanatory text about used heuristics
-            hideElement("facLogo");
-            hideElement("howItWorksText");
             // Show toggle button
             showElement("outterBtn");
 

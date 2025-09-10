@@ -51,9 +51,11 @@ class DataHandler():
             "details" : "txslight"
         }
 
+        firstTx = True
         # Iterate over received transaction records
-        async for i, tx in enumerate(self.trezor.get(session, f"v2/address/{addr}", params=params)):
+        async for tx in self.trezor.get(session, f"v2/address/{addr}", params=params):
             try:
+                # None tx indicates end of list, break loop
                 if tx is None:
                     break
 
@@ -69,7 +71,8 @@ class DataHandler():
 
                 # Get first valid exchange tx and store block height to skip it next refresh
                 # Returned txs are sorted by block height in descending order (first tx is highest)
-                if nodeType == "exchange" and i == 0:
+                if nodeType == "exchange" and firstTx:
+                    firstTx = False
                     # Get block height of newest tx
                     blockHeight = int(tx.get("blockHeight"))
                     Cache.set(addr, (blockHeight + 1))
