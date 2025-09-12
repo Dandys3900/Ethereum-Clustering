@@ -66,10 +66,10 @@
     {% if resultsGraph == "" %}
         <!-- Handle not found address -->
         <script type="text/javascript">
-        // Show "No address found" image
-        showElement("notFoundAddr");
-        // Hide content of second row
-        hideElement("secondRow");
+            // Show "No address found" image
+            showElement("notFoundAddr");
+            // Hide content of second row
+            hideElement("secondRow");
         </script>
     {% elif resultsGraph %}
         <script type="text/javascript">
@@ -105,7 +105,7 @@
             //************************************//
 
             // Create transactions table (will be filled with each edge's data)
-            var txsTable = createTxTable()
+            createTxTable()
                 .render(document.getElementById("edgeTxsModalBody"));
             // Create results table
             createResultsTable()
@@ -116,7 +116,6 @@
                     // Toggle node out/in selected ones
                     setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
                 });
-
             // Gather and parse graph data
             let graph = processGraphData(graphData);
             // Apply data and options to graph
@@ -124,14 +123,14 @@
                 tooltip: {
                     trigger: "item",
                     formatter: function (params) {
-                    if (params.dataType === "edge") // Edge
-                        return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
-                    else // Node
-                        return `${params.data.nodename} | Source name: ${params.data.exchname}`;
+                        if (params.dataType === "edge") // Edge
+                            return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
+                        else // Node
+                            return `${params.data.nodename} | Source name: ${params.data.exchname}`;
                     }
                 },
                 legend: [{
-                data: Object.keys(nodeStyles)
+                    data: Object.keys(nodeStyles)
                 }],
                 toolbox: {
                     feature: {
@@ -173,7 +172,7 @@
             }).on("click", function (params) { // Add listener for edge clicks
                 if (params.dataType === "edge" && params.data.txs) {
                     // Update table data
-                    txsTable.updateConfig({
+                    window.txTable.updateConfig({
                         data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
                             params.data.txs.split(";").filter(Boolean).map(value => {
                                 return [...value.split(","), null];
