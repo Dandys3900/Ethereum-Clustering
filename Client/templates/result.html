@@ -2,6 +2,13 @@
 
 {% block headerLeft %}
     <div class="col position-relative">
+        <!-- Faculty logo -->
+        <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+            <a href="https://www.fit.vut.cz/.en" target="_blank">
+                <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
+            </a>
+        </div>
+
         <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
             <!-- Count of clustered addresses -->
             <div class="card">
@@ -73,6 +80,8 @@
         </script>
     {% elif resultsGraph %}
         <script type="text/javascript">
+            // Hide faculty logo
+            hideElement("facLogo");
             // Show toggle button
             showElement("outterBtn");
 
@@ -102,6 +111,8 @@
             // Initially add user entered address
             var userAddr = "{{ targetAddr }}";
             selectedNodes.add(userAddr);
+            // Gather and parse graph data
+            let graph = processGraphData(graphData);
             //************************************//
 
             // Create transactions table (will be filled with each edge's data)
@@ -116,8 +127,6 @@
                     // Toggle node out/in selected ones
                     setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
                 });
-            // Gather and parse graph data
-            let graph = processGraphData(graphData);
             // Apply data and options to graph
             addrChart.setOption({
                 tooltip: {
@@ -169,7 +178,9 @@
                     }, //           -       >
                     edgeSymbol: ["none", "arrow"]
                 }]
-            }).on("click", function (params) { // Add listener for edge clicks
+            });
+            // Add listener for edge clicks
+            addrChart.on("click", function (params) {
                 if (params.dataType === "edge" && params.data.txs) {
                     // Update table data
                     window.txTable.updateConfig({
@@ -196,8 +207,7 @@
             // Add listener for web-page resize events
             window.addEventListener("resize", addrChart.resize);
 
-            storeSearchResults("dataTable", true);
-            storeSearchResults("exchsListModalBody", false);
+            storeSearchResults("dataTable");
         </script>
     {% endif %}
 {% endblock %}

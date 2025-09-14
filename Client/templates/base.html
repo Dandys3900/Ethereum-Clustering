@@ -30,10 +30,10 @@
     <link rel="icon" href="/static/graphics/favicon.ico" type="image/x-icon">
     <!-- Styles -->
     <link rel="stylesheet" href="/static/CSS/styles.css">
-    <!-- Page functionality script -->
-    <script src="/static/JS/script.js"></script>
     <!-- Page generic content creator -->
     <script src="/static/JS/contentCreator.js"></script>
+    <!-- Page functionality script -->
+    <script src="/static/JS/script.js"></script>
   </head>
 
   <body>
@@ -231,21 +231,6 @@
                     {% endif %}`,
             bodyId: "exchsListModalBody"
         });
-
-        var nodesParams;
-        // After creating modal of exchange addresses, prepare listener so we can export it's value by user if requested
-        async function getList () {
-            const response = await fetch("/exchList", {
-                method: "GET"
-            });
-            return await response.json();
-        }
-        getList().then(data => {
-            nodesParams = data;
-        });
-        // List of selected addresses in exchanges modal
-        var selectedNodes = new Set();
-        storeSearchResults("exchsListModalBody", false);
     </script>
     <!-- *********************************************** -->
 

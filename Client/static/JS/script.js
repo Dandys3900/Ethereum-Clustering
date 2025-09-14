@@ -1,8 +1,3 @@
-/**
- * TODO:
- * TLS
- */
-
 function showRangeValue (exchLen, rangeElementValue=50) {
     document.getElementById("refreshLabel").innerText = `${rangeElementValue} %`;
     document.getElementById("exchLenLabel").innerText = Math.floor(exchLen * (rangeElementValue / 100));
@@ -89,6 +84,7 @@ async function showExchList (loggedIn=false, justUpdate=false) {
     });
     // Get JSON format for response
     const exchList = await response.json();
+    selectedNodes = new Set(Object.keys(exchList));
 
     document.getElementById("exchsListModalBody").innerHTML = "";
     // Just update table data if set
@@ -104,6 +100,7 @@ async function showExchList (loggedIn=false, justUpdate=false) {
         createExchListTable(loggedIn, exchList)
             .render(document.getElementById("exchsListModalBody"));
     }
+    storeSearchResults("exchsListModalBody", window.exchTable, false, true);
 
     if (!justUpdate) // Show modal
         (new bootstrap.Modal(document.getElementById("exchsListModal"))).show();
@@ -347,19 +344,20 @@ function triggerLeftRow (whichBtn) {
     addrChart.resize();
 }
 
-function setHighlightResultsTableItem (addr, highlight=true, applyToGraph=true, tableId="dataTable") {
+function setHighlightResultsTableItem (addr, highlight=true, tableObj=window.resTable, applyToGraph=true) {
     // Find it and set proper highlight class
-    document.getElementById(tableId).querySelectorAll(".gridjs-tr").forEach(row => {
-        const value = row.innerText.trim();
-
+    tableObj.config.data.forEach(row => {
+        const value = String(row[0]); // Address; {addr : name}
         if (value.includes(addr)) {
             if (highlight) {
-                row.classList.add("selected-row");
                 selectedNodes.add(value);
+                Array.from(document.querySelectorAll(".gridjs-tr"))
+                     .find(row => {console.log(row); row.innerText.trim() === value})?.classList.add("selected-row");
             }
             else {
-                row.classList.remove("selected-row");
                 selectedNodes.delete(value);
+                Array.from(document.querySelectorAll(".gridjs-tr"))
+                     .find(row => row.innerText.trim() === value)?.classList.remove("selected-row");
             }
         }
     });
@@ -382,8 +380,8 @@ function setHighlightResultsTableItem (addr, highlight=true, applyToGraph=true, 
             Object.values(nodesParams)
                 /**
                  * When showing overview of used Ether of the cluster, filter amount with source in deposit.
-                 * Deposit sends only to exchange (other txs are ignored in DB), using it will only double
-                 * total send amount of Ether and would confuse the user.
+                 * Deposit sends only to exchange (other txs are ignored in DB), using it would only double
+                 * total send amount of Ether and confuse the user.
                  */
                 .filter(item => item.type !== "deposit")
                 .reduce((sum, item) => sum + item.amount, 0.0)
@@ -412,16 +410,16 @@ function setHighlightResultsTableItem (addr, highlight=true, applyToGraph=true, 
 
 // Resolve absence of "search" event in grid.js
 // Add listener for input events and select ones related to table search element
-function storeSearchResults (targetElement="dataTable", applyToGraph=true) {
-    document.getElementById(targetElement).addEventListener("input", event => {
+function storeSearchResults (targetElementId="dataTable", targetElement=window.resTable, applyToGraph=true, highlight=false) {
+    document.getElementById(targetElementId).addEventListener("input", event => {
         if (event.target.matches(".gridjs-search input")) {
             selectedNodes.clear();
             let query = event.target.value.toUpperCase();
 
             setTimeout(() => {
                 // When empty string -> search ended and clear highlights
-                setHighlightResultsTableItem(query, ((query) ? true : false), applyToGraph, targetElement);
-            }, 50);
+                setHighlightResultsTableItem(query, ((query || highlight) ? true : false), targetElement, applyToGraph);
+            }, 65);
         }
     });
 }

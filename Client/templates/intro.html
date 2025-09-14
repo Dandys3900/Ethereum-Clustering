@@ -4,9 +4,9 @@
     <div class="col position-relative">
         <!-- Faculty logo -->
         <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
-        <a href="https://www.fit.vut.cz/.en" target="_blank">
-            <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
-        </a>
+            <a href="https://www.fit.vut.cz/.en" target="_blank">
+                <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
+            </a>
         </div>
     </div>
 {% endblock %}
@@ -60,6 +60,9 @@
         </script>
     {% else %}
         <script type="text/javascript">
+            // List of selected addresses in exch list
+            var selectedNodes = new Set();
+
             // Show content of second row (if not already shown)
             if (document.getElementById("secondRow").style.display === "none")
                 showElement("secondRow");
