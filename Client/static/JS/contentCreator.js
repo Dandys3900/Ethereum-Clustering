@@ -17,14 +17,18 @@ function createModal ({style="", id="", header="", body="", bodyId="", footer=""
 function createResultsTable () {
     return (window.resTable = new gridjs.Grid({
         columns: [
+            { name: "Hidden-Values", hidden: true }, // Helper column to get addrs directly
             "Entity"
         ],
-        data: Object.keys(nodesParams).map(key => [
-            gridjs.html(
-                `<span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[key].style.color}; border-radius: 2px;"></span>
-                ${key}`
-            )
-        ]),
+        data: Object.keys(nodesParams).map(key => {
+            return [
+                key,
+                gridjs.html(
+                    `<span style="display: inline-block; width: 10px; height: 10px; background-color: ${nodesParams[key].style.color}; border-radius: 2px;"></span>
+                    ${key}`
+                )
+            ];
+        }),
         pagination: {
             limit: 20
         },

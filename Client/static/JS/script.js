@@ -347,17 +347,17 @@ function triggerLeftRow (whichBtn) {
 function setHighlightResultsTableItem (addr, highlight=true, tableObj=window.resTable, applyToGraph=true) {
     // Find it and set proper highlight class
     tableObj.config.data.forEach(row => {
-        const value = String(row[0]); // Address; {addr : name}
-        if (value.includes(addr)) {
+        const rowVal = row[0];
+        if (rowVal.includes(addr)) {
             if (highlight) {
-                selectedNodes.add(value);
+                selectedNodes.add(rowVal);
                 Array.from(document.querySelectorAll(".gridjs-tr"))
-                     .find(row => {console.log(row); row.innerText.trim() === value})?.classList.add("selected-row");
+                     .find(row => row.innerText.trim().includes(rowVal))?.classList.add("selected-row");
             }
             else {
-                selectedNodes.delete(value);
+                selectedNodes.delete(rowVal);
                 Array.from(document.querySelectorAll(".gridjs-tr"))
-                     .find(row => row.innerText.trim() === value)?.classList.remove("selected-row");
+                     .find(row => row.innerText.trim().includes(rowVal))?.classList.remove("selected-row");
             }
         }
     });
