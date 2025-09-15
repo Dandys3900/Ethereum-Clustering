@@ -21,19 +21,24 @@ class TrezorAPI(BaseAPI):
         # Block sending GET() when session is being re-creating
         self.sessionCreating = asyncio.Event()
         self.sessionCreating.set()
+        # Store latest blockbook status value(s)
+        self.heighestBlock = 0
+        self.lastBlockTime = None
 
     # Returns latest sync date among with best block
-    async def getCurrentSyncDate(self):
+    async def getCurrentClientData(self):
         async with SessionManager() as session:
             # Extract needed items
-            bestHeight    = await anext(self.get(session, "api/status", key="blockbook.bestHeight"))
-            lastBlockTime = await anext(self.get(session, "api/status", key="blockbook.lastBlockTime"))
+            self.heighestBlock = await anext(self.get(session, "api/status", key="blockbook.bestHeight"))
+            self.lastBlockTime = await anext(self.get(session, "api/status", key="blockbook.lastBlockTime"))
             # Check if valid server response
-            if not bestHeight or not lastBlockTime:
-                return ";"
+            if not self.heighestBlock or not self.lastBlockTime:
+                return None
 
-            return (f"{bestHeight};\
-                      {parser.isoparse(lastBlockTime).strftime("%Y-%m-%d, %H:%M")}")
+            return {
+                "maxBlock" : self.heighestBlock, # Get heighest block available by blockchain client
+                "syncTime" : parser.isoparse(self.lastBlockTime).strftime("%Y-%m-%d, %H:%M")
+            }
 
     async def get(self, session=None, endpoint="", params=None, key=None):
         # Construct target URL

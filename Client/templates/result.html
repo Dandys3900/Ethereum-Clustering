@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block headerLeft %}
+    <div class="col position-relative">
+        <!-- Faculty logo -->
+        <div id="facLogo" class="position-absolute" style="margin-top: 1.5em; width: 50%; display: block;">
+            <a href="https://www.fit.vut.cz/.en" target="_blank">
+                <img src="/static/graphics/VUTFIT_Logo.png" class="img-fluid">
+            </a>
+        </div>
+
+        <div id="resCharts" class="d-flex flex-column gap-3" style="display: none !important; width: fit-content; margin-top: 1.5em;">
+            <!-- Count of clustered addresses -->
+            <div class="card">
+                <div class="card-body d-flex">
+                    <i class="bi bi-bounding-box-circles"></i>
+                    <h6 id="addrCount" class="card-title"></h6>
+                </div>
+            </div>
+
+            <!-- Amount of Ether used by cluster -->
+            <div class="card">
+                <div class="card-body d-flex">
+                    <i class="bi bi-bank"></i>
+                    <h6 id="usedEther" class="card-title"></h6>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block headerMiddle %}
+    <!-- Address not found -->
+    <div id="notFoundAddr" style="padding-top: 20px; display: none;">
+        <img src="/static/graphics/NotFoundImg.png" class="img-fluid" style="width: 40%; margin-left: 30%; margin-right: 30%;">
+        <hr>
+        💡<b>Oh no, what happened?</b> Two explanations, provided address:
+        <ol class="list-group list-group-numbered">
+            <li class="list-group-item">Is known exchange (not supported as it would likely show giant clusters)</li>
+            <li class="list-group-item">Is not included in the current database (try refresh it with larger scope)</li>
+        </ol>
+    </div>
+{% endblock %}
+
+{% block headerRight %}{% endblock %}
+
+{% block mainLeft %}
+    <div id="outterBtn" class="col-auto pe-0" style="display: none;">
+        <button class="btn btn-warning" onclick="triggerLeftRow('outterBtn')">
+            <i class="bi bi-arrow-bar-right"></i>
+        </button>
+    </div>
+
+    <!-- Results table -->
+    <div id="results" class="col-md-3 text-nowrap" style="display: none;">
+        <div id="exportsBtns" class="gap-3" style="display: block;">
+            <button id="innerBtn" class="btn btn-warning" onclick="triggerLeftRow('innerBtn')">
+                <i class="bi bi-arrow-bar-left"></i>
+            </button>
+            <button class="btn btn-primary" onclick="exportJSON()">Export to JSON</button>
+            <button class="btn btn-primary" onclick="exportCSV()">Export to CSV</button>
+        </div>
+
+        <div class="resultsTable" style="width: fit-content;" id="dataTable"></div>
+    </div>
+{% endblock %}
+
+{% block mainCenter %}{% endblock %}
+
+{% block mainRight %}{% endblock %}
+
+{% block pageJSCode %}
+    {% if resultsGraph == "" %}
+        <!-- Handle not found address -->
+        <script type="text/javascript">
+            // Show "No address found" image
+            showElement("notFoundAddr");
+            // Hide content of second row
+            hideElement("secondRow");
+        </script>
+    {% elif resultsGraph %}
+        <script type="text/javascript">
+            // Hide faculty logo
+            hideElement("facLogo");
+            // Show toggle button
+            showElement("outterBtn");
+
+            //*********** Declarations ***********//
+            // Initially create graph object
+            const canvas = document.getElementById("container");
+            // Show canvas borders by adding "card" class
+            canvas.classList.add("card");
+            // Render nodes graph
+            var addrChart = echarts.init(dom=canvas, opts={
+                renderer: "canvas"
+            });
+
+            var nodesParams = {/*Amount, Styling*/};
+            // Get data from Python
+            var graphData = {{ resultsGraph | safe }};
+            // Create styling for each type of node
+            let nodeStyles = {
+                "exchange": {size: 12, color: "#6270c0"},
+                "deposit" : {size: 10, color: "#a1ca7f"},
+                "leaf"    : {size: 8,  color: "#ecc96c"},
+                "selected": {size: 14, color: "#d46e6a"} // Order affects node color
+            };
+
+            // List of selected addresses in graph
+            var selectedNodes = new Set();
+            // Initially add user entered address
+            var userAddr = "{{ targetAddr }}";
+            selectedNodes.add(userAddr);
+            // Gather and parse graph data
+            let graph = processGraphData(graphData);
+            //************************************//
+
+            // Create transactions table (will be filled with each edge's data)
+            createTxTable()
+                .render(document.getElementById("edgeTxsModalBody"));
+            // Create results table
+            createResultsTable()
+                .render(document.getElementById("dataTable"))
+                .on("rowClick", (record) => {
+                    // Extract selected address
+                    const entity = record.srcElement.innerText.trim();
+                    // Toggle node out/in selected ones
+                    setHighlightResultsTableItem(entity, ((selectedNodes.has(entity)) ? false : true));
+                });
+            // Apply data and options to graph
+            addrChart.setOption({
+                tooltip: {
+                    trigger: "item",
+                    formatter: function (params) {
+                        if (params.dataType === "edge") // Edge
+                            return `Ether amount: ${Number(params.data.amount).toFixed(3)}`;
+                        else // Node
+                            return `${params.data.nodename} | Source name: ${params.data.exchname}`;
+                    }
+                },
+                legend: [{
+                    data: Object.keys(nodeStyles)
+                }],
+                toolbox: {
+                    feature: {
+                        restore: {
+                            show : true,
+                            title: "Re-create"
+                        },
+                        saveAsImage: {
+                            show: true
+                        }
+                    }
+                },
+                series: [{
+                    type      : "graph",
+                    layout    : "circular",
+                    data      : graph.nodes,
+                    links     : graph.links,
+                    categories: graph.categories,
+                    roam      : true,
+                    draggable : true,
+                    zoom      : 1,
+                    center    : ['50%', '50%'],
+                    force: {
+                        repulsion: 0,
+                        friction : 0,
+                        gravity  : 0
+                    },
+                    lineStyle: {
+                        color: "source"
+                    },
+                    emphasis: {
+                        focus: "adjacency",
+                        lineStyle: {
+                            width: 10
+                        }
+                    }, //           -       >
+                    edgeSymbol: ["none", "arrow"]
+                }]
+            });
+            // Add listener for edge clicks
+            addrChart.on("click", function (params) {
+                if (params.dataType === "edge" && params.data.txs) {
+                    // Update table data
+                    window.txTable.updateConfig({
+                        data: // Format: (";" TXID "," DATETIME "," TXAMOUNT)
+                            params.data.txs.split(";").filter(Boolean).map(value => {
+                                return [...value.split(","), null];
+                            })
+                    }).forceRender();
+
+                    // Show modal
+                    (new bootstrap.Modal(document.getElementById("edgeTxsModal"))).show();
+                }
+                else { // Node
+                    // Copy node address to clipboard
+                    copyToClipboard(params.data.nodename);
+                }
+            });
+
+            // Display and fill result's charts
+            showElement("resCharts");
+            // Set initial highlight to user address
+            setHighlightResultsTableItem(userAddr);
+
+            // Add listener for web-page resize events
+            window.addEventListener("resize", addrChart.resize);
+
+            storeSearchResults("dataTable");
+        </script>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+:root {
+    /* Introduce official FIT-blue color */
+    --FITblue: #00ABE3;
+    --SelectedRED: #D46E6A;
+}
+
+.btn-primary {
+    background-color: var(--FITblue);
+    border: none;
+}
+
+/* Change border and cursor when hovering over table's row */
+.resultsTable .gridjs-table tbody tr:hover {
+    border-right: 1px solid var(--SelectedRED);
+    border-left:  1px solid var(--SelectedRED);
+    cursor: pointer;
+}
+
+/* Style for selected table row */
+.resultsTable .selected-row {
+    border-right: 1px solid var(--SelectedRED);
+    border-left:  1px solid var(--SelectedRED);
+}
