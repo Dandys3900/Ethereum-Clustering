@@ -84,6 +84,7 @@ async function showExchList (loggedIn=false, justUpdate=false) {
     });
     // Get JSON format for response
     const exchList = await response.json();
+    // Store all exch addrs in case user wants to download whole list before any search
     selectedNodes = new Set(Object.keys(exchList));
 
     document.getElementById("exchsListModalBody").innerHTML = "";
@@ -344,20 +345,21 @@ function triggerLeftRow (whichBtn) {
     addrChart.resize();
 }
 
-function setHighlightResultsTableItem (addr, highlight=true, tableObj=window.resTable, applyToGraph=true) {
+function setHighlightResultsTableItem (key, highlight=true, tableObj=window.resTable, applyToGraph=true) {
     // Find it and set proper highlight class
     tableObj.config.data.forEach(row => {
-        const rowVal = row[0];
-        if (rowVal.includes(addr)) {
+        if (row.some(cell => cell.toUpperCase().includes(key))) {
+            // Extract address from row
+            const rowAddr = row[0];
             if (highlight) {
-                selectedNodes.add(rowVal);
+                selectedNodes.add(rowAddr);
                 Array.from(document.querySelectorAll(".gridjs-tr"))
-                     .find(row => row.innerText.trim().includes(rowVal))?.classList.add("selected-row");
+                     .find(row => row.innerText.trim().includes(rowAddr))?.classList.add("selected-row");
             }
             else {
-                selectedNodes.delete(rowVal);
+                selectedNodes.delete(rowAddr);
                 Array.from(document.querySelectorAll(".gridjs-tr"))
-                     .find(row => row.innerText.trim().includes(rowVal))?.classList.remove("selected-row");
+                     .find(row => row.innerText.trim().includes(rowAddr))?.classList.remove("selected-row");
             }
         }
     });

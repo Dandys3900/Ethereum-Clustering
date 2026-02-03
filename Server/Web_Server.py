@@ -102,9 +102,8 @@ async def refreshDB(request: Request, minHeight: int = Form(...), maxHeight: int
     # Omit pwd checks when already loggedIn
     if not request.session.get("loggedIn", False):
         # Check for valid refresh password
-        correctPwd = checkPwd(pwd)
         # Raise exception to notify client
-        if not correctPwd:
+        if not checkPwd(pwd):
             raise HTTPException(status_code=401, detail="Invalid password")
 
     if not ongoingRefresh:
